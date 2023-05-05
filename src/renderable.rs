@@ -1,21 +1,25 @@
-use crate::util::{Point, Vec3};
+use std::rc::Rc;
+
+use crate::util::{Point, Vec3, Color};
 use crate::ray::Ray;
+use crate::material::{Material, LambertianMaterial};
 
 pub struct HitRecord {
     pub point: Point,
     pub normal: Vec3,
     pub t: f32,
+    pub material_ptr: Rc<dyn Material>,
 
     pub front_face: bool
 }
 
 impl HitRecord {
     pub fn nothing() -> Self {
-        Self { point: Point::zero(), normal: Vec3::zero(), t: 0.0, front_face: true}
+        Self { point: Point::zero(), normal: Vec3::zero(), t: 0.0, front_face: true, material_ptr: Rc::new(LambertianMaterial::new(Color::new(1.0, 1.0, 1.0)))}
     }
 
-    pub fn new(point: Point, normal: Vec3, t: f32, front_face: bool) -> Self {
-        Self { point, normal, t, front_face }
+    pub fn new(point: Point, normal: Vec3, t: f32, front_face: bool, material_ptr: Rc<dyn Material>) -> Self {
+        Self { point, normal, t, front_face, material_ptr}
     }
 
     pub fn get_front_face(&self, ray: &Ray, outward_normal: &Vec3) -> bool {

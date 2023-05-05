@@ -1,9 +1,30 @@
 use core::fmt;
 use std::{ops, fmt::Display};
 use std::f32::consts::PI;
+use rand::Rng;
 
 pub fn degrees_to_radians(degrees: f32) -> f32 {
     return (degrees * PI) / 180.0
+}
+
+pub fn random_between_0_1() -> f32 {
+    let mut rng = rand::thread_rng();
+    let random_float = rng.gen();
+    random_float
+}
+
+pub fn random_in_range(min: f32, max: f32) -> f32 {
+    min + (max - min) * random_between_0_1()
+}
+
+pub fn clamp(x: f32, min: f32, max: f32) -> f32 {
+    if x < min {
+        return min;
+    }
+    if x > max {
+        return max;
+    }
+    x
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -22,6 +43,67 @@ impl Vec3 {
 
     pub fn zero() -> Vec3 {
         Vec3 { vec: [0.0, 0.0, 0.0] }
+    }
+
+    pub fn random(min: f32, max: f32) -> Point {
+        Vec3 { vec: [random_in_range(min, max), random_in_range(min, max), random_in_range(min, max)] }
+    }
+
+    pub fn random_in_unit_sphere() -> Point {
+        loop {
+            let p: Point = Point::random(-1.0, 1.0);
+            if p.len_squared() <= 1.0 {
+                return p;
+            }
+        }
+    }
+
+    pub fn random_unit_vector() -> Point {
+        Point::random_in_unit_sphere().unit_vector()
+    }
+
+    pub fn near_zero(&self) -> bool {
+        let e: f32 = 1e-8;
+        (f32::abs(self.x()) < e) && (f32::abs(self.y()) < e) && (f32::abs(self.z()) < e)
+    }
+
+    // where n is a unit vector, and v assumedly points opposite direction as n
+    pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+        v - (2.0 * (v.dot(n)*n))
+    }
+
+    /**
+     * This come from Snell's Law, which describes the angles regarding a reflecting ray (R) and a refracted ray (R')
+     * n * sin(theta) = n' * sin(theta')
+     * n is the refractive index of the material the ray is passing through when it hits the surface (usually air)
+     * n' is the refractive index of the material the ray is passing through once it starts refracting
+     * theta is the angle the incoming ray hits the surface at, with respect to the normal (so 0 <= theta <= 90)
+     * theta' is the angle that the refracted ray refracts at with respect to the normal (so 0 <= theta <= 90)
+     * 
+     * We know then that the refracted ray (R') is composed of two components: R_perp and R_para, where 
+     * R_para is the component of R' that is parallel to the normal (n)
+     * R_perp is the component of R' that is perpendicular to the normal (n)
+     * 
+     * Solving these yields:
+     * R_perp = 𝜂/𝜂' * (R + cos(theta) * n)
+     * R_para = -sqrt(1 - R_perp^2 * n)
+     * 
+     * for cos(theta), we use the idea that for any two vectors a, b, we know that 
+     *  a dot b = |a||b|cos(theta)
+     * 
+     * If we assume that a and b are both unit vectors, we thus get 
+     * a dot b = cos(theta)
+     * 
+     * and as the incoming vector (R) and our normal (n) are what directly composes theta, we then get
+     * cos(theta) = R dot n
+     */
+    pub fn refract(uv: Vec3, n: Vec3, etai_over_etat: f32) -> Vec3 {
+        // have to negate uv in this as it is ??
+        let cos_theta = f32::min(-uv.dot(n), 1.0);
+        let r_out_perp = etai_over_etat * (uv + cos_theta * n);
+        let r_out_para = -f32::sqrt(f32::abs(1.0 - r_out_perp.len_squared())) * n;
+        r_out_perp + r_out_para
+
     }
 
     pub fn x(&self) -> f32 {
@@ -57,7 +139,7 @@ impl Vec3 {
     }
 
     pub fn cross(a: Vec3, b: Vec3) -> Vec3 {
-        Vec3 { vec: [a[1] * b[2] - a[2] * b[1], a[0] * b[2] - a[2] * b[0], a[0] * b[1] - b[0] * a[1]]}
+        Vec3 { vec: [(a[1] * b[2]) - (a[2] * b[1]), (a[2] * b[0]) - (a[0] * b[2]), (a[0] * b[1]) - (a[1] * b[0])]}
     }
 
     pub fn unit_vector(&self) -> Vec3 {
@@ -116,6 +198,12 @@ impl ops::Div<f32> for Vec3 {
     fn div(self, scalar: f32) -> Vec3 {
         let frac: f32 = 1.0/scalar;
         self * frac
+    }
+} 
+impl ops::Mul<Vec3> for f32 {
+    type Output = Vec3;
+    fn mul(self, vec: Vec3) -> Vec3 {
+        Vec3 { vec: [self * vec[0], self * vec[1], self * vec[2]] }
     }
 } 
 impl ops::Mul<Vec3> for Vec3 {
@@ -240,7 +328,7 @@ mod tests {
         let v1 = Vec3::new(2.0, 3.0, 1.0);
         let v2: Vec3 = Vec3::new(3.0, 0.5, -1.0);
 
-        let actual = Vec3::new(-3.5, -5.0, -8.0);
+        let actual = Vec3::new(-3.5, 5.0, -8.0);
         assert_eq!(Vec3::cross(v1, v2), actual);
     }
 

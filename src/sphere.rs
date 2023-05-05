@@ -1,15 +1,19 @@
+use std::rc::Rc;
+
 use crate::renderable::{Renderable, HitRecord};
 use crate::util::{Point};
 use crate::ray::Ray;
+use crate::material::Material;
 
 pub struct Sphere {
     pub center: Point,
-    pub r: f32
+    pub r: f32,
+    pub material: Rc<dyn Material>
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f32) -> Sphere {
-        Self { center, r: radius}
+    pub fn new(center: Point, radius: f32, material: Rc<dyn Material>) -> Sphere {
+        Self { center, r: radius, material}
     }
 }
 
@@ -63,7 +67,7 @@ impl Renderable for Sphere {
         let oc = ray.origin - self.center;
         let a = ray.direction.len_squared();
         let half_b = oc.dot(ray.direction);
-        let c = oc.len_squared() - self.r*self.r;
+        let c = oc.len_squared() - (self.r*self.r);
         let discriminant = (half_b*half_b) - (a*c);
         if discriminant < 0.0 { return (false, HitRecord::nothing())}
 
@@ -79,14 +83,14 @@ impl Renderable for Sphere {
             }
             let hr_point = ray.at(root);
             let normal = (hr_point - self.center) / self.r;
-            let mut hit_record = HitRecord::new(hr_point, normal, root, false);
+            let mut hit_record = HitRecord::new(hr_point, normal, root, false, Rc::clone(&self.material));
             hit_record.set_face_normal(ray, &normal);
             return (true, hit_record)
         }
-
+        
         let hr_point = ray.at(root);
         let normal = (hr_point - self.center) / self.r;
-        let mut hit_record = HitRecord::new(hr_point, normal, root, false);
+        let mut hit_record = HitRecord::new(hr_point, normal, root, false, Rc::clone(&self.material));
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);
     }
