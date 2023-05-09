@@ -44,7 +44,7 @@ pub trait Renderable {
 }
 
 pub struct RenderableList {
-    objects: Vec<Box<dyn Renderable>>
+    objects: Vec<Rc<dyn Renderable>>
 }
 
 impl RenderableList {
@@ -52,7 +52,7 @@ impl RenderableList {
         Self { objects: vec![]}
     }
 
-    pub fn add(&mut self, to_render: Box<dyn Renderable>) {
+    pub fn add(&mut self, to_render: Rc<dyn Renderable>) {
         self.objects.push(to_render);
     }
 }

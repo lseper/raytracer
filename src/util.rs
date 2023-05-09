@@ -62,6 +62,15 @@ impl Vec3 {
         Point::random_in_unit_sphere().unit_vector()
     }
 
+    pub fn random_in_unit_disk() -> Point {
+        loop {
+            let p = Point::new(random_between_0_1(), random_between_0_1(), 0.0);
+            if p.len_squared() <= 1.0 {
+                return p;
+            }
+        }
+    }
+
     pub fn near_zero(&self) -> bool {
         let e: f32 = 1e-8;
         (f32::abs(self.x()) < e) && (f32::abs(self.y()) < e) && (f32::abs(self.z()) < e)

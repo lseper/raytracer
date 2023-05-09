@@ -11,10 +11,10 @@ use renderable::{RenderableList, Renderable};
 use std::{f32::INFINITY, rc::Rc};
 use sphere::Sphere;
 use camera::Camera;
-use crate::material::{Metal, LambertianMaterial, Dielectric};
-use std::f32::consts::PI;
+use crate::{material::{Metal, LambertianMaterial, Dielectric}, util::random_in_range};
+use std::thread;
+use std::sync::{Arc};
 
-const FACTOR: f32 = 255.999;
 const COLOR_LIM: i32 = 256;
 const BOUNCE_DEPTH: i32 = 50;
 
@@ -51,55 +51,73 @@ fn ray_color(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color {
     }
     let unit_direction : Vec3 = ray.direction.unit_vector();
     let t : f32 = 0.5*(unit_direction.y() + 1.0);
-    return (Color::new(1.0, 1.0, 1.0)* (1.0-t)) + (Color::new(0.5, 0.7, 1.0) * t);
+    let skybox = (Color::new(1.0, 1.0, 1.0)* (1.0-t)) + (Color::new(0.5, 0.7, 1.0) * t);
+    skybox
 }
 
-fn main() {
+fn random_scene() -> RenderableList {
+    let mut world : RenderableList = RenderableList::new();
 
-    let aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
+    let material_ground = Rc::new(LambertianMaterial::new(Color::new(0.5, 0.5, 0.5)));
+    let ground = Rc::new(Sphere::new(Point::new(0.0, -1000.0, 0.0), 1000.0, material_ground));
+    world.add(ground);
+
+    // generate the spheres
+    for a in 0..11 {
+        for b in 0..11 {
+            let choose_material = random_between_0_1();
+            let center = Point::new(a as f32 + 0.9 * random_between_0_1(), 0.2, b as f32 + 0.9*random_between_0_1());
+
+            if (center - Point::new(4.0, 0.2, 0.0)).len() > 0.9 {
+                if choose_material < 0.8 {
+                    // diffuse
+                    let albedo: Color = Color::random(0.0, 1.0);
+                    let sphere_material = Rc::new(LambertianMaterial::new(albedo));
+                    world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+                } else if choose_material < 0.95 {
+                    // metal
+                    let albedo = Color::random(0.5, 1.0);
+                    let fuzz = random_in_range(0.0, 0.5);
+                    let sphere_material = Rc::new(Metal::new(albedo, Some(fuzz)));
+                    world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+                } else {
+                    // glass
+                    let sphere_material = Rc::new(Dielectric::new(Some(1.5)));
+                    world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+                }
+            }
+        }
+    }
+
+    let material_1 = Rc::new(Dielectric::new(Some(1.5)));
+    world.add(Rc::new(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, material_1)));
+    
+    let material_2 = Rc::new(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
+    world.add(Rc::new(Sphere::new(Point::new(-4.0, 1.0, 0.0), 1.0, material_2)));
+    
+    let material_3 = Rc::new(Metal::new(Color::new(0.7, 0.6, 0.5), Some(0.0)));
+    world.add(Rc::new(Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, material_3)));
+
+    world
+}
+
+fn render() {
+    let aspect_ratio = 3.0 / 2.0;
+    let image_width = 600;
     let image_height = ((image_width as f32)/ aspect_ratio) as i32;
-    let samples_per_pixel = 100;
+    let samples_per_pixel = 500;
 
     // WORLD
 
-    // MATERIAL DEFINITIONS
-    // let ground_material = Rc::new(LambertianMaterial::new(Color::new(0.8, 0.8, 0.0)));
-    // let front_material = Rc::new(Dielectric::new(Some(1.3)));
-    // let left_material = Rc::new(Dielectric::new(Some(1.3)));
-    // // let left_material = Rc::new(Metal::new(Color::new(0.8, 0.8, 0.8), Some(0.3)));
-    // let right_material = Rc::new(Metal::new(Color::new(0.8, 0.6, 0.2), None ));
+    let world = random_scene();
 
-    // let mut world: RenderableList = RenderableList::new();
-    // world.add(Box::new(Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5, front_material)));
-    // world.add(Box::new(Sphere::new(Point::new(1.0, 0.0, -1.0), 0.5, right_material)));
-    // world.add(Box::new(Sphere::new(Point::new(-1.0, 0.0, -1.0), -0.5, left_material)));
-    // // ground
-    // world.add(Box::new(Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0, ground_material)));
+    let look_from = Point::new(13.0,2.0,3.0);
+    let look_at = Point::new(0.0,0.0,-1.0);
+    let focus_length = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
 
-    // let R = f32::cos(PI / 4.0);
-    let mut world : RenderableList = RenderableList::new();
-    // let material_a = Rc::new(LambertianMaterial::new(Color::new(1.0, 0.0, 0.0)));
-    // let material_b = Rc::new(LambertianMaterial::new(Color::new(0.0, 0.0, 1.0)));
-    // world.add(Box::new(Sphere::new(Point::new(-R, 0.0, -1.0), R, material_a)));
-    // world.add(Box::new(Sphere::new(Point::new(R, 0.0, -1.0), R, material_b)));
+    let aperature = 0.1;
 
-    // let cam = Camera::new(Point::new(0.0, 0.0, 1.0), Point::new(0.0, 0.15, -1.0), Vec3::new(0.0, 1.0, 0.0), 90.0, aspect_ratio);
-
-    let material_ground = Rc::new(LambertianMaterial::new(Color::new(0.8, 0.8, 0.0)));
-    let material_center = Rc::new(LambertianMaterial::new(Color::new(0.1, 0.2, 0.5)));
-    let material_left = Rc::new(Dielectric::new(Some(1.5)));
-    let material_left_2 = Rc::new(Dielectric::new(Some(1.5)));
-    let material_right  = Rc::new(Metal::new(Color::new(0.8, 0.6, 0.2), Some(0.0)));
-
-    world.add(Box::new(Sphere::new(Point::new( 0.0, -100.5, -1.0), 100.0, material_ground)));
-    world.add(Box::new(Sphere::new(Point::new( 0.0,    0.0, -1.0),   0.5, material_center)));
-    world.add(Box::new(Sphere::new(Point::new(-1.0,    0.0, -1.0),   0.5, material_left)));
-    world.add(Box::new(Sphere::new(Point::new(-1.0,    0.0, -1.0), -0.45, material_left_2)));
-    world.add(Box::new(Sphere::new(Point::new( 1.0,    0.0, -1.0),   0.5, material_right)));
-
-    let cam = Camera::new(Point::new(-2.0,2.0,1.0), Point::new(0.0,0.0,-1.0), Vec3::new(0.0,1.0,0.0), 40.0, aspect_ratio);
-
+    let cam = Camera::new(look_from, look_at, Vec3::new(0.0,1.0,0.0), 20.0, aspect_ratio, aperature, focus_length);
 
 
     // actually render the image
@@ -116,10 +134,13 @@ fn main() {
                 let u = ((i as f32) + random_between_0_1()) / (image_width as f32);
                 let v = ((j as f32) + random_between_0_1()) / (image_height as f32);
                 let r = cam.get_ray(u, v);
-
                 color += ray_color(&r, &world, 0);
             }
-            write_color_to_output(color, 100);
+            write_color_to_output(color, samples_per_pixel);
         }
     }
+}
+
+fn main() {
+    render();
 }
