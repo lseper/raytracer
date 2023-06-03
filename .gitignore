@@ -12,3 +12,5 @@ target/
 .vscode
 
 *.ppm
+
+scenes/*

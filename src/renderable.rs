@@ -1,3 +1,4 @@
+use std::fmt;
 use std::rc::Rc;
 
 use crate::util::{Point, Vec3, Color};
@@ -39,7 +40,7 @@ impl HitRecord {
     }
 }
 
-pub trait Renderable {
+pub trait Renderable: fmt::Display {
     fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
 }
 
@@ -73,5 +74,15 @@ impl Renderable for RenderableList {
         }
 
         (hit_anything, final_rec)
+    }
+}
+
+impl fmt::Display for RenderableList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let objects_str = self.objects.iter()
+        .map(|renderable| renderable.to_string())
+        .collect::<Vec<String>>()
+        .join("\n");
+        write!(f, "{}", objects_str)
     }
 }

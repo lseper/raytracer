@@ -4,6 +4,7 @@ use crate::renderable::{Renderable, HitRecord};
 use crate::util::{Point};
 use crate::ray::Ray;
 use crate::material::Material;
+use std::fmt;
 
 pub struct Sphere {
     pub center: Point,
@@ -93,5 +94,11 @@ impl Renderable for Sphere {
         let mut hit_record = HitRecord::new(hr_point, normal, root, false, Rc::clone(&self.material));
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);
+    }
+}
+
+impl fmt::Display for Sphere {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Sphere {} {} {}", self.center, self.r, self.material)
     }
 }

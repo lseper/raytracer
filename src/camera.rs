@@ -1,5 +1,8 @@
+use std::string;
+
 use crate::util::{Point, Vec3, degrees_to_radians};
 use crate::ray::Ray;
+use std::fmt;
 
 pub struct Camera {
     origin: Point,
@@ -40,5 +43,12 @@ impl Camera {
         // calculate the offset in reference to the origin (this ties back to how u, v are calculated in constructor)
         let offset = (self.u * disk_samp.x()) + (self.v * disk_samp.y());
         Ray::new(self.origin + offset, self.lower_left_corner + u*self.horizontal + v*self.vertical - self.origin - offset)
+    }
+}
+
+impl fmt::Display for Camera {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "camera {}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n", 
+        self.origin, self.lower_left_corner, self.horizontal, self.vertical, self.u, self.v, self.w, self.lens_radius)
     }
 }

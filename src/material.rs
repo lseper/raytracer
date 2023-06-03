@@ -1,10 +1,11 @@
 use crate::renderable::HitRecord;
 use crate::ray::Ray;
 use crate::util::{Color, Vec3, Point, random_between_0_1};
-
-pub trait Material {
+use std::fmt;
+pub trait Material: fmt::Display {
     fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray);
 }
+
 #[derive(Debug, Copy, Clone)]
 pub struct LambertianMaterial { 
     albedo: Color
@@ -27,6 +28,13 @@ impl Material for LambertianMaterial {
         (true, self.albedo, scattered)
     }
 }
+
+impl fmt::Display for LambertianMaterial {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Lambertian {}", self.albedo)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Metal {
     albedo: Color,
@@ -52,6 +60,12 @@ impl Material for Metal {
             reflected + (self.fuzziness * Point::random_in_unit_sphere())
         );
         return (scattered.direction.dot(hit_record.normal) > 0.0, self.albedo, scattered);
+    }
+}
+
+impl fmt::Display for Metal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Metal {} {}", self.albedo, self.fuzziness)
     }
 }
 
@@ -113,5 +127,11 @@ impl Material for Dielectric {
             
         let scattered = Ray::new(hit_record.point, direction);
         (true, attenuation, scattered)
+    }
+}
+
+impl fmt::Display for Dielectric {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Dielectric {}", self.ir)
     }
 }
