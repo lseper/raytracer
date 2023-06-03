@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::camera::Camera;
 use crate::material::{LambertianMaterial, Dielectric, Metal};
-use crate::renderable::{RenderableList, Renderable};
+use crate::renderable::{RenderableList};
 use crate::sphere::Sphere;
 use crate::util::{random_between_0_1, random_in_range, Color, Point};
 

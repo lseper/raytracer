@@ -83,6 +83,6 @@ impl fmt::Display for RenderableList {
         .map(|renderable| renderable.to_string())
         .collect::<Vec<String>>()
         .join("\n");
-        write!(f, "{}", objects_str)
+        write!(f, "world\n{}", objects_str)
     }
 }
