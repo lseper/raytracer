@@ -31,9 +31,9 @@ pub fn save_scene(scene_metadata: SceneMetaData, camera: Camera, world: &Rendera
     writeln!(file, "{}", scene_metadata.image_height).expect("Error writing aspect ratio");
     writeln!(file, "{}", scene_metadata.samples_per_pixel).expect("Error writing aspect ratio");
 
-    writeln!(file, "{}", camera);
+    writeln!(file, "{}", camera).expect("Error writing camera");
 
-    writeln!(file, "{}", world);
+    writeln!(file, "{}", world).expect("Error writing world");
 }
 
 pub fn random_scene() -> RenderableList {

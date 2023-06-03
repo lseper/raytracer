@@ -1,5 +1,3 @@
-use std::string;
-
 use crate::util::{Point, Vec3, degrees_to_radians};
 use crate::ray::Ray;
 use std::fmt;
