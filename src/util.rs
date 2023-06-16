@@ -2,6 +2,7 @@ use core::fmt;
 use std::{ops, fmt::Display};
 use std::f32::consts::PI;
 use rand::Rng;
+use serde::Deserialize;
 
 pub fn degrees_to_radians(degrees: f32) -> f32 {
     return (degrees * PI) / 180.0
@@ -27,7 +28,7 @@ pub fn clamp(x: f32, min: f32, max: f32) -> f32 {
     x
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Deserialize)]
 pub struct Vec3 {
     vec: [f32; 3]
 }
@@ -246,7 +247,7 @@ impl ops::DivAssign<f32> for Vec3 {
 
 impl Display for Vec3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {}, {})", self[0], self[1], self[2])
+        write!(f, "[{}, {}, {}]", self[0], self[1], self[2])
     }
 }
 

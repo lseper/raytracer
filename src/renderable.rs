@@ -5,6 +5,9 @@ use crate::util::{Point, Vec3, Color};
 use crate::ray::Ray;
 use crate::material::{Material, LambertianMaterial};
 
+use serde::Deserialize;
+
+
 pub struct HitRecord {
     pub point: Point,
     pub normal: Vec3,
@@ -44,6 +47,7 @@ pub trait Renderable: fmt::Display {
     fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
 }
 
+#[derive(Debug, Deserialize)]
 pub struct RenderableList {
     objects: Vec<Rc<dyn Renderable>>
 }
@@ -83,6 +87,6 @@ impl fmt::Display for RenderableList {
         .map(|renderable| renderable.to_string())
         .collect::<Vec<String>>()
         .join("\n");
-        write!(f, "world\n{}", objects_str)
+        write!(f, "WORLD\n{}", objects_str)
     }
 }

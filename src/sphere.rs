@@ -99,6 +99,6 @@ impl Renderable for Sphere {
 
 impl fmt::Display for Sphere {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Sphere {} {} {}", self.center, self.r, self.material)
+        write!(f, "{{\n\t\"center\": {{\n\t\t\"vec\": {} \n\t}},\n\t\"r\": {},\n\t\"material\": {{\n{}\n\t}} \n}},\n", self.center, self.r, self.material)
     }
 }

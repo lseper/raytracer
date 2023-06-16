@@ -31,7 +31,7 @@ impl Material for LambertianMaterial {
 
 impl fmt::Display for LambertianMaterial {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Lambertian {}", self.albedo)
+        write!(f, "\t\t\"material_type\": \"lambertian\",\n\t\t\"albedo\": {}", self.albedo)
     }
 }
 
@@ -65,7 +65,7 @@ impl Material for Metal {
 
 impl fmt::Display for Metal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Metal {} {}", self.albedo, self.fuzziness)
+        write!(f, "\t\t\"material_type\": \"metal\",\n\t\t\"albedo\": {},\n\t\t\"fuzziness\": {}", self.albedo, self.fuzziness)
     }
 }
 
@@ -132,6 +132,6 @@ impl Material for Dielectric {
 
 impl fmt::Display for Dielectric {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Dielectric {}", self.ir)
+        write!(f, "\t\t\"material_type\": \"dielectric\",\n\t\t\"ir\": {}", self.ir)
     }
 }

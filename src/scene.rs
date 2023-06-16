@@ -1,4 +1,10 @@
+use serde::Deserialize;
+
+use std::error::Error;
 use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
+
 use std::io::Write;
 use std::rc::Rc;
 
@@ -6,7 +12,7 @@ use crate::camera::Camera;
 use crate::material::{LambertianMaterial, Dielectric, Metal};
 use crate::renderable::{RenderableList};
 use crate::sphere::Sphere;
-use crate::util::{random_between_0_1, random_in_range, Color, Point};
+use crate::util::{random_between_0_1, random_in_range, Color, Point, Vec3};
 
 pub struct SceneMetaData {
     pub file_name: String,
@@ -34,6 +40,40 @@ pub fn save_scene(scene_metadata: SceneMetaData, camera: Camera, world: &Rendera
     writeln!(file, "{}", camera).expect("Error writing camera");
 
     writeln!(file, "{}", world).expect("Error writing world");
+}
+
+#[derive(Deserialize, Debug)]
+struct SerializedMaterial {
+    material_type: String
+}
+
+#[derive(Deserialize, Debug)]
+struct SerializedSphere {
+    center: Vec3,
+    r: f32,
+    material: SerializedMaterial
+}
+
+#[derive(Deserialize, Debug)]
+struct Scene {
+    aspect_ratio: f32,
+    image_width: i32,
+    image_height: i32,
+    samples_per_pixel: i32,
+    camera: Camera,
+    world: RenderableList,
+}
+
+fn load_scene<P: AsRef<Path>>(path: P) -> Result<User, Box<dyn Error>> {
+    // Open the file in read-only mode with buffer.
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+
+    // Read the JSON contents of the file as an instance of `User`.
+    let u = serde_json::from_reader(reader)?;
+
+    // Return the `User`.
+    Ok(u)
 }
 
 pub fn random_scene() -> RenderableList {

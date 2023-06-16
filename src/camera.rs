@@ -2,6 +2,10 @@ use crate::util::{Point, Vec3, degrees_to_radians};
 use crate::ray::Ray;
 use std::fmt;
 
+use serde::Deserialize;
+
+
+#[derive(Debug, Deserialize)]
 pub struct Camera {
     origin: Point,
     lower_left_corner: Point,
@@ -46,7 +50,7 @@ impl Camera {
 
 impl fmt::Display for Camera {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "camera\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}", 
+        write!(f, "CAMERA\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}", 
         self.origin, self.lower_left_corner, self.horizontal, self.vertical, self.u, self.v, self.w, self.lens_radius)
     }
 }
