@@ -1,19 +1,22 @@
-use std::rc::Rc;
+// use std::rc::Rc;
+
+use serde::Deserialize;
 
 use crate::renderable::{Renderable, HitRecord};
 use crate::util::{Point};
 use crate::ray::Ray;
-use crate::material::Material;
-use std::fmt;
+use crate::material::{RenderableMaterial};
+// use std::fmt;
 
+#[derive(Debug, Deserialize)]
 pub struct Sphere {
     pub center: Point,
     pub r: f32,
-    pub material: Rc<dyn Material>
+    pub material: RenderableMaterial
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f32, material: Rc<dyn Material>) -> Sphere {
+    pub fn new(center: Point, radius: f32, material: RenderableMaterial) -> Sphere {
         Self { center, r: radius, material}
     }
 }
@@ -84,21 +87,21 @@ impl Renderable for Sphere {
             }
             let hr_point = ray.at(root);
             let normal = (hr_point - self.center) / self.r;
-            let mut hit_record = HitRecord::new(hr_point, normal, root, false, Rc::clone(&self.material));
+            let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
             hit_record.set_face_normal(ray, &normal);
             return (true, hit_record)
         }
         
         let hr_point = ray.at(root);
         let normal = (hr_point - self.center) / self.r;
-        let mut hit_record = HitRecord::new(hr_point, normal, root, false, Rc::clone(&self.material));
+        let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);
     }
 }
 
-impl fmt::Display for Sphere {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{\n\t\"center\": {{\n\t\t\"vec\": {} \n\t}},\n\t\"r\": {},\n\t\"material\": {{\n{}\n\t}} \n}},\n", self.center, self.r, self.material)
-    }
-}
+// impl fmt::Display for Sphere {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         write!(f, "{{\n\t\"center\": {{\n\t\t\"vec\": {} \n\t}},\n\t\"r\": {},\n\t\"material\": {{\n{}\n\t}} \n}},\n", self.center, self.r, self.material)
+//     }
+// }

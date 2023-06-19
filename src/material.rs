@@ -1,12 +1,31 @@
+use serde::Deserialize;
+
 use crate::renderable::HitRecord;
 use crate::ray::Ray;
 use crate::util::{Color, Vec3, Point, random_between_0_1};
 use std::fmt;
-pub trait Material: fmt::Display {
+pub trait Material {
     fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray);
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Deserialize, Copy, Clone)]
+pub enum RenderableMaterial {
+    Lambertian(LambertianMaterial),
+    Metal(Metal),
+    Dielectric(Dielectric),
+}
+
+impl Material for RenderableMaterial {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
+        match self {
+            RenderableMaterial::Lambertian(lm) => lm.scatter(r_in, hit_record),
+            RenderableMaterial::Metal(m) => m.scatter(r_in, hit_record),
+            RenderableMaterial::Dielectric(d) => d.scatter(r_in, hit_record),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Deserialize)]
 pub struct LambertianMaterial { 
     albedo: Color
 }
@@ -35,7 +54,7 @@ impl fmt::Display for LambertianMaterial {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Deserialize)]
 pub struct Metal {
     albedo: Color,
     fuzziness: f32
@@ -69,6 +88,7 @@ impl fmt::Display for Metal {
     }
 }
 
+#[derive(Debug, Deserialize, Copy, Clone)]
 pub struct Dielectric {
     // index of refraction (𝜂')
     ir: f32

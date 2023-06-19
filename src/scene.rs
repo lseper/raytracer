@@ -5,12 +5,12 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use std::io::Write;
-use std::rc::Rc;
+// use std::io::Write;
+// use std::rc::Rc;
 
 use crate::camera::Camera;
-use crate::material::{LambertianMaterial, Dielectric, Metal};
-use crate::renderable::{RenderableList};
+use crate::material::{LambertianMaterial, Dielectric, Metal, RenderableMaterial};
+use crate::renderable::{RenderableList, Object};
 use crate::sphere::Sphere;
 use crate::util::{random_between_0_1, random_in_range, Color, Point, Vec3};
 
@@ -28,19 +28,19 @@ impl SceneMetaData {
     }
 }
 
-pub fn save_scene(scene_metadata: SceneMetaData, camera: Camera, world: &RenderableList) {
-    let mut file = File::create(scene_metadata.file_name).expect("File should be able to be created");
-    // file structure: my_scene.scene
-    // 
-    writeln!(file, "{}", scene_metadata.aspect_ratio).expect("Error writing aspect ratio");
-    writeln!(file, "{}", scene_metadata.image_width).expect("Error writing image width");
-    writeln!(file, "{}", scene_metadata.image_height).expect("Error writing aspect ratio");
-    writeln!(file, "{}", scene_metadata.samples_per_pixel).expect("Error writing aspect ratio");
+// pub fn save_scene(scene_metadata: SceneMetaData, camera: Camera, world: &RenderableList) {
+//     let mut file = File::create(scene_metadata.file_name).expect("File should be able to be created");
+//     // file structure: my_scene.scene
+//     // 
+//     writeln!(file, "{}", scene_metadata.aspect_ratio).expect("Error writing aspect ratio");
+//     writeln!(file, "{}", scene_metadata.image_width).expect("Error writing image width");
+//     writeln!(file, "{}", scene_metadata.image_height).expect("Error writing aspect ratio");
+//     writeln!(file, "{}", scene_metadata.samples_per_pixel).expect("Error writing aspect ratio");
 
-    writeln!(file, "{}", camera).expect("Error writing camera");
+//     writeln!(file, "{}", camera).expect("Error writing camera");
 
-    writeln!(file, "{}", world).expect("Error writing world");
-}
+//     writeln!(file, "{}", world).expect("Error writing world");
+// }
 
 #[derive(Deserialize, Debug)]
 struct SerializedMaterial {
@@ -64,7 +64,7 @@ struct Scene {
     world: RenderableList,
 }
 
-fn load_scene<P: AsRef<Path>>(path: P) -> Result<User, Box<dyn Error>> {
+fn load_scene<P: AsRef<Path>>(path: P) -> Result<Scene, Box<dyn Error>> {
     // Open the file in read-only mode with buffer.
     let file = File::open(path)?;
     let reader = BufReader::new(file);
@@ -72,15 +72,15 @@ fn load_scene<P: AsRef<Path>>(path: P) -> Result<User, Box<dyn Error>> {
     // Read the JSON contents of the file as an instance of `User`.
     let u = serde_json::from_reader(reader)?;
 
-    // Return the `User`.
+    // Return the `Scene`.
     Ok(u)
 }
 
 pub fn random_scene() -> RenderableList {
     let mut world : RenderableList = RenderableList::new();
 
-    let material_ground = Rc::new(LambertianMaterial::new(Color::new(0.5, 0.5, 0.5)));
-    let ground = Rc::new(Sphere::new(Point::new(0.0, -1000.0, 0.0), 1000.0, material_ground));
+    let material_ground = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.5, 0.5, 0.5)));
+    let ground = Object::Sphere(Sphere::new(Point::new(0.0, -1000.0, 0.0), 1000.0, material_ground));
     world.add(ground);
 
     // generate the spheres
@@ -93,31 +93,31 @@ pub fn random_scene() -> RenderableList {
                 if choose_material < 0.8 {
                     // diffuse
                     let albedo: Color = Color::random(0.0, 1.0);
-                    let sphere_material = Rc::new(LambertianMaterial::new(albedo));
-                    world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+                    let sphere_material = RenderableMaterial::Lambertian(LambertianMaterial::new(albedo));
+                    world.add(Object::Sphere(Sphere::new(center, 0.2, sphere_material)));
                 } else if choose_material < 0.95 {
                     // metal
                     let albedo = Color::random(0.5, 1.0);
                     let fuzz = random_in_range(0.0, 0.5);
-                    let sphere_material = Rc::new(Metal::new(albedo, Some(fuzz)));
-                    world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+                    let sphere_material = RenderableMaterial::Metal(Metal::new(albedo, Some(fuzz)));
+                    world.add(Object::Sphere(Sphere::new(center, 0.2, sphere_material)));
                 } else {
                     // glass
-                    let sphere_material = Rc::new(Dielectric::new(Some(1.5)));
-                    world.add(Rc::new(Sphere::new(center, 0.2, sphere_material)));
+                    let sphere_material = RenderableMaterial::Dielectric(Dielectric::new(Some(1.5)));
+                    world.add(Object::Sphere(Sphere::new(center, 0.2, sphere_material)));
                 }
             }
         }
     }
 
-    let material_1 = Rc::new(Dielectric::new(Some(1.5)));
-    world.add(Rc::new(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, material_1)));
+    let material_1 = RenderableMaterial::Dielectric(Dielectric::new(Some(1.5)));
+    world.add(Object::Sphere(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, material_1)));
     
-    let material_2 = Rc::new(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
-    world.add(Rc::new(Sphere::new(Point::new(-4.0, 1.0, 0.0), 1.0, material_2)));
+    let material_2 = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
+    world.add(Object::Sphere(Sphere::new(Point::new(-4.0, 1.0, 0.0), 1.0, material_2)));
     
-    let material_3 = Rc::new(Metal::new(Color::new(0.7, 0.6, 0.5), Some(0.0)));
-    world.add(Rc::new(Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, material_3)));
+    let material_3 = RenderableMaterial::Metal(Metal::new(Color::new(0.7, 0.6, 0.5), Some(0.0)));
+    world.add(Object::Sphere(Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, material_3)));
 
     world
 }

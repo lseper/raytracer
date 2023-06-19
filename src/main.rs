@@ -11,9 +11,9 @@ use util::{Color, Point, Vec3, clamp};
 use ray::Ray;
 use renderable::{RenderableList, Renderable};
 use std::{f32::INFINITY};
-use sphere::Sphere;
+use material::{Material};
 use camera::{Camera};
-use crate::scene::{save_scene, random_scene};
+use crate::{scene::{random_scene}, util::random_between_0_1};
 
 
 const COLOR_LIM: i32 = 256;
@@ -57,10 +57,10 @@ fn ray_color(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color {
 }
 
 fn render() {
-    let aspect_ratio = 3.0 / 2.0;
-    let image_width = 1200;
+    let aspect_ratio = 1.0;
+    let image_width = 200;
     let image_height = ((image_width as f32)/ aspect_ratio) as i32;
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 25;
 
     // WORLD
 
@@ -79,25 +79,25 @@ fn render() {
 
     let scene_metadata = SceneMetaData::new(String::from("./scenes/test.scene"), aspect_ratio, image_width, image_height, samples_per_pixel);
 
-    save_scene(scene_metadata, cam, &world);
+    // save_scene(scene_metadata, cam, &world);
 
-    // println!("P3\n{image_width} {image_height}\n255\n");
+    println!("P3\n{image_width} {image_height}\n255\n");
 
-    // for j in (0..image_height).rev() {
-    //     eprintln!("\rScanlines remaining: {j}");
-    //     for i in 0..image_width {
-    //         // black
-    //         let mut color = Color::zero();
-    //         for _s in 0..samples_per_pixel {
-    //             // random point for ray to shoot at within this pixel
-    //             let u = ((i as f32) + random_between_0_1()) / (image_width as f32);
-    //             let v = ((j as f32) + random_between_0_1()) / (image_height as f32);
-    //             let r = cam.get_ray(u, v);
-    //             color += ray_color(&r, &world, 0);
-    //         }
-    //         write_color_to_output(color, samples_per_pixel);
-    //     }
-    // }
+    for j in (0..image_height).rev() {
+        eprintln!("\rScanlines remaining: {j}");
+        for i in 0..image_width {
+            // black
+            let mut color = Color::zero();
+            for _s in 0..samples_per_pixel {
+                // random point for ray to shoot at within this pixel
+                let u = ((i as f32) + random_between_0_1()) / (image_width as f32);
+                let v = ((j as f32) + random_between_0_1()) / (image_height as f32);
+                let r = cam.get_ray(u, v);
+                color += ray_color(&r, &world, 0);
+            }
+            write_color_to_output(color, samples_per_pixel);
+        }
+    }
 }
 
 fn main() {

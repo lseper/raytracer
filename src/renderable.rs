@@ -1,9 +1,10 @@
-use std::fmt;
-use std::rc::Rc;
+// use std::fmt;
+// use std::rc::Rc;
 
+use crate::sphere::Sphere;
 use crate::util::{Point, Vec3, Color};
 use crate::ray::Ray;
-use crate::material::{Material, LambertianMaterial};
+use crate::material::{LambertianMaterial, RenderableMaterial};
 
 use serde::Deserialize;
 
@@ -12,17 +13,17 @@ pub struct HitRecord {
     pub point: Point,
     pub normal: Vec3,
     pub t: f32,
-    pub material_ptr: Rc<dyn Material>,
+    pub material_ptr: RenderableMaterial,
 
     pub front_face: bool
 }
 
 impl HitRecord {
     pub fn nothing() -> Self {
-        Self { point: Point::zero(), normal: Vec3::zero(), t: 0.0, front_face: true, material_ptr: Rc::new(LambertianMaterial::new(Color::new(1.0, 1.0, 1.0)))}
+        Self { point: Point::zero(), normal: Vec3::zero(), t: 0.0, front_face: true, material_ptr: RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(1.0, 1.0, 1.0)))}
     }
 
-    pub fn new(point: Point, normal: Vec3, t: f32, front_face: bool, material_ptr: Rc<dyn Material>) -> Self {
+    pub fn new(point: Point, normal: Vec3, t: f32, front_face: bool, material_ptr: RenderableMaterial) -> Self {
         Self { point, normal, t, front_face, material_ptr}
     }
 
@@ -43,13 +44,27 @@ impl HitRecord {
     }
 }
 
-pub trait Renderable: fmt::Display {
+pub trait Renderable {
     fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)] // since your current JSON is untagged
+pub enum Object {
+    Sphere(Sphere)
+}
+
+impl Renderable for Object {
+    fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
+        match self {
+            Object::Sphere(s) => s.hit(ray, t_min, t_max)
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct RenderableList {
-    objects: Vec<Rc<dyn Renderable>>
+    objects: Vec<Object>
 }
 
 impl RenderableList {
@@ -57,7 +72,7 @@ impl RenderableList {
         Self { objects: vec![]}
     }
 
-    pub fn add(&mut self, to_render: Rc<dyn Renderable>) {
+    pub fn add(&mut self, to_render: Object) {
         self.objects.push(to_render);
     }
 }
@@ -81,12 +96,12 @@ impl Renderable for RenderableList {
     }
 }
 
-impl fmt::Display for RenderableList {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let objects_str = self.objects.iter()
-        .map(|renderable| renderable.to_string())
-        .collect::<Vec<String>>()
-        .join("\n");
-        write!(f, "WORLD\n{}", objects_str)
-    }
-}
+// impl fmt::Display for RenderableList {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let objects_str = self.objects.iter()
+//         .map(|renderable| renderable.to_string())
+//         .collect::<Vec<String>>()
+//         .join("\n");
+//         write!(f, "WORLD\n{}", objects_str)
+//     }
+// }
