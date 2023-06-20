@@ -1,6 +1,6 @@
 // use std::rc::Rc;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::renderable::{Renderable, HitRecord};
 use crate::util::{Point};
@@ -8,7 +8,7 @@ use crate::ray::Ray;
 use crate::material::{RenderableMaterial};
 // use std::fmt;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Sphere {
     pub center: Point,
     pub r: f32,

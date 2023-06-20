@@ -2,10 +2,10 @@ use crate::util::{Point, Vec3, degrees_to_radians};
 use crate::ray::Ray;
 use std::fmt;
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Camera {
     origin: Point,
     lower_left_corner: Point,

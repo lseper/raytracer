@@ -1,4 +1,4 @@
-// use std::fmt;
+use std::fmt;
 // use std::rc::Rc;
 
 use crate::sphere::Sphere;
@@ -6,7 +6,7 @@ use crate::util::{Point, Vec3, Color};
 use crate::ray::Ray;
 use crate::material::{LambertianMaterial, RenderableMaterial};
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 
 pub struct HitRecord {
@@ -48,8 +48,8 @@ pub trait Renderable {
     fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged)] // since your current JSON is untagged
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")] // will expect { type: "Sphere", ... } in JSON format
 pub enum Object {
     Sphere(Sphere)
 }
@@ -62,7 +62,7 @@ impl Renderable for Object {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RenderableList {
     objects: Vec<Object>
 }

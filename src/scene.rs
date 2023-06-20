@@ -1,9 +1,11 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader};
 use std::path::Path;
+
+use std::fs;
 
 // use std::io::Write;
 // use std::rc::Rc;
@@ -22,58 +24,42 @@ pub struct SceneMetaData {
     pub samples_per_pixel: i32,
 }
 
-impl SceneMetaData {
-    pub fn new(file_name: String, aspect_ratio: f32, image_width: i32, image_height: i32, samples_per_pixel: i32) -> Self {
-        Self { file_name, aspect_ratio, image_width, image_height, samples_per_pixel }
-    }
+pub fn save_scene(scene_metadata: SceneMetaData, camera: Camera, world: RenderableList) {
+    let scene = Scene { 
+        aspect_ratio: scene_metadata.aspect_ratio,
+        image_width: scene_metadata.image_width,
+        image_height: scene_metadata.image_height,
+        samples_per_pixel: scene_metadata.samples_per_pixel,
+        camera,
+        world,
+    };
+    let serialized = serde_json::to_string(&scene).unwrap(); 
+    fs::write(scene_metadata.file_name, serialized).expect("Unable to write to file?");
+
 }
 
-// pub fn save_scene(scene_metadata: SceneMetaData, camera: Camera, world: &RenderableList) {
-//     let mut file = File::create(scene_metadata.file_name).expect("File should be able to be created");
-//     // file structure: my_scene.scene
-//     // 
-//     writeln!(file, "{}", scene_metadata.aspect_ratio).expect("Error writing aspect ratio");
-//     writeln!(file, "{}", scene_metadata.image_width).expect("Error writing image width");
-//     writeln!(file, "{}", scene_metadata.image_height).expect("Error writing aspect ratio");
-//     writeln!(file, "{}", scene_metadata.samples_per_pixel).expect("Error writing aspect ratio");
-
-//     writeln!(file, "{}", camera).expect("Error writing camera");
-
-//     writeln!(file, "{}", world).expect("Error writing world");
-// }
-
-#[derive(Deserialize, Debug)]
-struct SerializedMaterial {
-    material_type: String
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Scene {
+    pub aspect_ratio: f32,
+    pub image_width: i32,
+    pub image_height: i32,
+    pub samples_per_pixel: i32,
+    pub camera: Camera,
+    pub world: RenderableList,
 }
 
-#[derive(Deserialize, Debug)]
-struct SerializedSphere {
-    center: Vec3,
-    r: f32,
-    material: SerializedMaterial
-}
 
-#[derive(Deserialize, Debug)]
-struct Scene {
-    aspect_ratio: f32,
-    image_width: i32,
-    image_height: i32,
-    samples_per_pixel: i32,
-    camera: Camera,
-    world: RenderableList,
-}
 
-fn load_scene<P: AsRef<Path>>(path: P) -> Result<Scene, Box<dyn Error>> {
+pub fn load_scene<P: AsRef<Path>>(path: P) -> Result<Scene, Box<dyn Error>> {
     // Open the file in read-only mode with buffer.
     let file = File::open(path)?;
     let reader = BufReader::new(file);
 
     // Read the JSON contents of the file as an instance of `User`.
-    let u = serde_json::from_reader(reader)?;
+    let s = serde_json::from_reader(reader)?;
 
     // Return the `Scene`.
-    Ok(u)
+    Ok(s)
 }
 
 pub fn random_scene() -> RenderableList {

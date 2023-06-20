@@ -6,14 +6,16 @@ pub mod camera;
 pub mod material;
 pub mod scene;
 
-use scene::SceneMetaData;
+#[macro_use]
+extern crate fstrings;
+
 use util::{Color, Point, Vec3, clamp};
 use ray::Ray;
 use renderable::{RenderableList, Renderable};
 use std::{f32::INFINITY};
 use material::{Material};
 use camera::{Camera};
-use crate::{scene::{random_scene}, util::random_between_0_1};
+use crate::{scene::{random_scene, load_scene, save_scene, SceneMetaData}, util::random_between_0_1};
 
 
 const COLOR_LIM: i32 = 256;
@@ -57,45 +59,47 @@ fn ray_color(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color {
 }
 
 fn render() {
-    let aspect_ratio = 1.0;
-    let image_width = 200;
-    let image_height = ((image_width as f32)/ aspect_ratio) as i32;
-    let samples_per_pixel = 25;
+    // let aspect_ratio = 1.0;
+    // let image_width = 200;
+    // let image_height = ((image_width as f32)/ aspect_ratio) as i32;
+    // let samples_per_pixel = 25;
 
-    // WORLD
+    // // WORLD
 
-    let world = random_scene();
+    // let world = random_scene();
 
-    let look_from = Point::new(13.0,2.0,3.0);
-    let look_at = Point::new(0.0,0.0,-1.0);
-    let focus_length = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
+    // let look_from = Point::new(13.0,2.0,3.0);
+    // let look_at = Point::new(0.0,0.0,-1.0);
+    // let focus_length = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
 
-    let aperature = 0.1;
+    // let aperature = 0.1;
 
-    let cam = Camera::new(look_from, look_at, Vec3::new(0.0,1.0,0.0), 20.0, aspect_ratio, aperature, focus_length);
+    // let cam = Camera::new(look_from, look_at, Vec3::new(0.0,1.0,0.0), 20.0, aspect_ratio, aperature, focus_length);
 
+    // // actually render the image
 
-    // actually render the image
+    // let scene_metadata = SceneMetaData { file_name: String::from("./scenes/test.json"), aspect_ratio, image_width, image_height, samples_per_pixel };
 
-    let scene_metadata = SceneMetaData::new(String::from("./scenes/test.scene"), aspect_ratio, image_width, image_height, samples_per_pixel);
+    // save_scene(scene_metadata, cam, world);
 
-    // save_scene(scene_metadata, cam, &world);
+    let scene = load_scene("./scenes/test.json").unwrap();
 
-    println!("P3\n{image_width} {image_height}\n255\n");
+    println_f!("P3\n{scene.image_width} {scene.image_height}\n255\n");
 
-    for j in (0..image_height).rev() {
+    for j in (0..scene.image_height).rev() {
         eprintln!("\rScanlines remaining: {j}");
-        for i in 0..image_width {
+        for i in 0..scene.image_width {
             // black
             let mut color = Color::zero();
-            for _s in 0..samples_per_pixel {
+            for _s in 0..scene.samples_per_pixel {
                 // random point for ray to shoot at within this pixel
-                let u = ((i as f32) + random_between_0_1()) / (image_width as f32);
-                let v = ((j as f32) + random_between_0_1()) / (image_height as f32);
-                let r = cam.get_ray(u, v);
-                color += ray_color(&r, &world, 0);
+                let u = ((i as f32) + random_between_0_1()) / (scene.image_width as f32);
+                let v = ((j as f32) + random_between_0_1()) / (scene.image_height as f32);
+                let r = scene.camera.get_ray(u, v);
+                // starting call depth is 0 as increases until hitting bounce depth
+                color += ray_color(&r, &scene.world, 0);
             }
-            write_color_to_output(color, samples_per_pixel);
+            write_color_to_output(color, scene.samples_per_pixel);
         }
     }
 }

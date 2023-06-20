@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 use crate::renderable::HitRecord;
 use crate::ray::Ray;
@@ -8,7 +8,8 @@ pub trait Material {
     fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray);
 }
 
-#[derive(Debug, Deserialize, Copy, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
+#[serde(tag = "type")] // will expect { type: "Metal", ... } in JSON format
 pub enum RenderableMaterial {
     Lambertian(LambertianMaterial),
     Metal(Metal),
@@ -25,7 +26,7 @@ impl Material for RenderableMaterial {
     }
 }
 
-#[derive(Debug, Copy, Clone, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LambertianMaterial { 
     albedo: Color
 }
@@ -54,7 +55,7 @@ impl fmt::Display for LambertianMaterial {
     }
 }
 
-#[derive(Debug, Copy, Clone, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Metal {
     albedo: Color,
     fuzziness: f32
@@ -88,7 +89,7 @@ impl fmt::Display for Metal {
     }
 }
 
-#[derive(Debug, Deserialize, Copy, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub struct Dielectric {
     // index of refraction (𝜂')
     ir: f32

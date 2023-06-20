@@ -2,7 +2,7 @@ use core::fmt;
 use std::{ops, fmt::Display};
 use std::f32::consts::PI;
 use rand::Rng;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 pub fn degrees_to_radians(degrees: f32) -> f32 {
     return (degrees * PI) / 180.0
@@ -28,7 +28,7 @@ pub fn clamp(x: f32, min: f32, max: f32) -> f32 {
     x
 }
 
-#[derive(Debug, Copy, Clone, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Vec3 {
     vec: [f32; 3]
 }
