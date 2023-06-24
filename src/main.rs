@@ -103,6 +103,9 @@ fn render() {
 
     println_f!("P3\n{scene.image_width} {scene.image_height}\n255\n");
 
+    // maybe only use channels? aggregate color fully within thread, then once pixel is finished
+    // send fractionally sampled pixel to awating main thread, which will collect and aggregate them
+    // to build final output color.
     let (tx, rx) = mpsc::channel();
     
     for _ in 0..THREADS {
