@@ -48,7 +48,7 @@ pub trait Renderable {
     fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "type")] // will expect { type: "Sphere", ... } in JSON format
 pub enum Object {
     Sphere(Sphere)
@@ -62,9 +62,9 @@ impl Renderable for Object {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderableList {
-    objects: Vec<Object>
+    pub objects: Vec<Object>
 }
 
 impl RenderableList {

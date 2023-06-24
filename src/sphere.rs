@@ -8,7 +8,7 @@ use crate::ray::Ray;
 use crate::material::{RenderableMaterial};
 // use std::fmt;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Sphere {
     pub center: Point,
     pub r: f32,

@@ -5,7 +5,7 @@ use std::fmt;
 use serde::{Serialize, Deserialize};
 
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Camera {
     origin: Point,
     lower_left_corner: Point,

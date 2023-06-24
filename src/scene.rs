@@ -48,18 +48,35 @@ pub struct Scene {
     pub world: RenderableList,
 }
 
+pub fn default_scene() -> Scene {
+    let DEFAULT_LOOK_FROM: Point= Point::new(13.0,2.0,3.0);
+    let DEFAULT_LOOK_AT: Point = Point::new(0.0,0.0,-1.0);
+    let DEFAULT_FOCAL_LENGTH: f32 = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
+    
+    let DEFAULT_APERATURE: f32 = 0.1;
+    
+    let DEFAULT_CAMERA: Camera= Camera::new(DEFAULT_LOOK_FROM, DEFAULT_LOOK_AT, Vec3::new(0.0,1.0,0.0), 20.0, 1.0, DEFAULT_APERATURE, DEFAULT_FOCAL_LENGTH);
+    
+    let DEFAULT_MATERIAL: RenderableMaterial = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
+    let DEFAULT_SPHERE: Sphere = Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, DEFAULT_MATERIAL);
+    let DEFAULT_WORLD: RenderableList = RenderableList { objects: vec![Object::Sphere(DEFAULT_SPHERE)] };
+    
+    let DEFAULT_SCENE: Scene = Scene { aspect_ratio: 1.0, image_width: 100, image_height: 100, samples_per_pixel: 10, camera: DEFAULT_CAMERA, world: DEFAULT_WORLD};
+    DEFAULT_SCENE
+}
 
 
-pub fn load_scene<P: AsRef<Path>>(path: P) -> Result<Scene, Box<dyn Error>> {
+pub fn load_scene<P: AsRef<Path>>(path: P) -> Scene {
+
     // Open the file in read-only mode with buffer.
-    let file = File::open(path)?;
+    let file = File::open(path).unwrap();
     let reader = BufReader::new(file);
 
     // Read the JSON contents of the file as an instance of `User`.
-    let s = serde_json::from_reader(reader)?;
+    let s = serde_json::from_reader(reader).unwrap_or(default_scene());
 
     // Return the `Scene`.
-    Ok(s)
+    s
 }
 
 pub fn random_scene() -> RenderableList {
