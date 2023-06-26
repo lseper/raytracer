@@ -1,9 +1,8 @@
-use crate::util::{Point, Vec3, degrees_to_radians};
 use crate::ray::Ray;
+use crate::util::{degrees_to_radians, Point, Vec3};
 use std::fmt;
 
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Camera {
@@ -18,7 +17,15 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(look_from: Point, look_at: Point, vup: Vec3, vfov: f32, aspect_ratio: f32, aperature: f32, focus_distance: f32) -> Self {
+    pub fn new(
+        look_from: Point,
+        look_at: Point,
+        vup: Vec3,
+        vfov: f32,
+        aspect_ratio: f32,
+        aperature: f32,
+        focus_distance: f32,
+    ) -> Self {
         let theta = degrees_to_radians(vfov);
         let h = f32::tan(theta / 2.0);
         let viewport_height = 2.0 * h;
@@ -33,10 +40,19 @@ impl Camera {
         let origin = look_from;
         let horizontal = focus_distance * viewport_width * u;
         let vertical = focus_distance * viewport_height * v;
-        let lower_left_corner = origin - horizontal/2.0 - vertical/2.0 - (focus_distance * w);
+        let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - (focus_distance * w);
 
         let lens_radius = aperature / 2.0;
-        Self { origin, horizontal, lower_left_corner, vertical, u, v, w, lens_radius }
+        Self {
+            origin,
+            horizontal,
+            lower_left_corner,
+            vertical,
+            u,
+            v,
+            w,
+            lens_radius,
+        }
     }
 
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
@@ -44,13 +60,26 @@ impl Camera {
         let disk_samp = self.lens_radius * Vec3::random_in_unit_disk();
         // calculate the offset in reference to the origin (this ties back to how u, v are calculated in constructor)
         let offset = (self.u * disk_samp.x()) + (self.v * disk_samp.y());
-        Ray::new(self.origin + offset, self.lower_left_corner + u*self.horizontal + v*self.vertical - self.origin - offset)
+        Ray::new(
+            self.origin + offset,
+            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin - offset,
+        )
     }
 }
 
 impl fmt::Display for Camera {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CAMERA\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}", 
-        self.origin, self.lower_left_corner, self.horizontal, self.vertical, self.u, self.v, self.w, self.lens_radius)
+        write!(
+            f,
+            "CAMERA\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}",
+            self.origin,
+            self.lower_left_corner,
+            self.horizontal,
+            self.vertical,
+            self.u,
+            self.v,
+            self.w,
+            self.lens_radius
+        )
     }
 }

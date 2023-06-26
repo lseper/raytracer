@@ -1,13 +1,12 @@
 use std::fmt;
 // use std::rc::Rc;
 
-use crate::sphere::Sphere;
-use crate::util::{Point, Vec3, Color};
-use crate::ray::Ray;
 use crate::material::{LambertianMaterial, RenderableMaterial};
+use crate::ray::Ray;
+use crate::sphere::Sphere;
+use crate::util::{Color, Point, Vec3};
 
-use serde::{Serialize, Deserialize};
-
+use serde::{Deserialize, Serialize};
 
 pub struct HitRecord {
     pub point: Point,
@@ -15,20 +14,40 @@ pub struct HitRecord {
     pub t: f32,
     pub material_ptr: RenderableMaterial,
 
-    pub front_face: bool
+    pub front_face: bool,
 }
 
 impl HitRecord {
     pub fn nothing() -> Self {
-        Self { point: Point::zero(), normal: Vec3::zero(), t: 0.0, front_face: true, material_ptr: RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(1.0, 1.0, 1.0)))}
+        Self {
+            point: Point::zero(),
+            normal: Vec3::zero(),
+            t: 0.0,
+            front_face: true,
+            material_ptr: RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(
+                1.0, 1.0, 1.0,
+            ))),
+        }
     }
 
-    pub fn new(point: Point, normal: Vec3, t: f32, front_face: bool, material_ptr: RenderableMaterial) -> Self {
-        Self { point, normal, t, front_face, material_ptr}
+    pub fn new(
+        point: Point,
+        normal: Vec3,
+        t: f32,
+        front_face: bool,
+        material_ptr: RenderableMaterial,
+    ) -> Self {
+        Self {
+            point,
+            normal,
+            t,
+            front_face,
+            material_ptr,
+        }
     }
 
     pub fn get_front_face(&self, ray: &Ray, outward_normal: &Vec3) -> bool {
-        ray.direction.dot(*outward_normal) < 0.0 
+        ray.direction.dot(*outward_normal) < 0.0
     }
     // need to do this in order to distinguish hitting the outside of a volume vs the inside of a volume
     // as they always point out, we need to know what side the ray was on when it actually intersected
@@ -40,36 +59,40 @@ impl HitRecord {
     // (if it hits it tangentially, then do either, it doesn't really matter)
     pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vec3) {
         self.front_face = ray.direction.dot(*outward_normal) < 0.0;
-        self.normal = if self.front_face {*outward_normal} else {-*outward_normal};
+        self.normal = if self.front_face {
+            *outward_normal
+        } else {
+            -*outward_normal
+        };
     }
 }
 
 pub trait Renderable {
-    fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "type")] // will expect { type: "Sphere", ... } in JSON format
 pub enum Object {
-    Sphere(Sphere)
+    Sphere(Sphere),
 }
 
 impl Renderable for Object {
-    fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
         match self {
-            Object::Sphere(s) => s.hit(ray, t_min, t_max)
+            Object::Sphere(s) => s.hit(ray, t_min, t_max),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderableList {
-    pub objects: Vec<Object>
+    pub objects: Vec<Object>,
 }
 
 impl RenderableList {
     pub fn new() -> Self {
-        Self { objects: vec![]}
+        Self { objects: vec![] }
     }
 
     pub fn add(&mut self, to_render: Object) {
@@ -78,7 +101,7 @@ impl RenderableList {
 }
 
 impl Renderable for RenderableList {
-    fn hit (&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
         let mut final_rec: HitRecord = HitRecord::nothing();
         let mut hit_anything: bool = false;
         let mut closest_yet = t_max;
