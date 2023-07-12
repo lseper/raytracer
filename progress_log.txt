@@ -1,6 +1,0 @@
-06/03/2023
-
-Implementing multiple process functionality for the raytracer. This requires a standardized scene format. I'm just using JSON and shoving everything
-into a scene.json file. This is via the serde serialization crate, which requires I use nightly rust to compile due to some of the dependencies.
-to switch back to stable rust, use `rustup default stable`. To switch back to nightly, `rustup default nightly`. To update (as nightly rust updates frequently),
-run `rustup update`. 

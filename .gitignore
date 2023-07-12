@@ -11,6 +11,7 @@ target/
 
 .vscode
 
-*.ppm
+# ignore generated files
+**/*.ppm
 
 scenes/*
