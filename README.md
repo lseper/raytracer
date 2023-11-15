@@ -1,4 +1,4 @@
-A proof of concept memory-safe multithreaded raytracer built from scratch in Rust
+A proof of concept memory-safe multithreaded raytracer built from scratch in Rust.
 
 ## Features
 - Lambertian, Metallic, and Dieletrcic materials
