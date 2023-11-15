@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -48,38 +47,38 @@ pub struct Scene {
 }
 
 pub fn default_scene() -> Scene {
-    let DEFAULT_LOOK_FROM: Point = Point::new(13.0, 2.0, 3.0);
-    let DEFAULT_LOOK_AT: Point = Point::new(0.0, 0.0, -1.0);
-    let DEFAULT_FOCAL_LENGTH: f32 = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
+    let default_look_from: Point = Point::new(13.0, 2.0, 3.0);
+    let default_look_at: Point = Point::new(0.0, 0.0, -1.0);
+    let default_focal_length: f32 = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
 
-    let DEFAULT_APERATURE: f32 = 0.1;
+    let default_aperature: f32 = 0.1;
 
-    let DEFAULT_CAMERA: Camera = Camera::new(
-        DEFAULT_LOOK_FROM,
-        DEFAULT_LOOK_AT,
+    let default_camera: Camera = Camera::new(
+        default_look_from,
+        default_look_at,
         Vec3::new(0.0, 1.0, 0.0),
         20.0,
         1.0,
-        DEFAULT_APERATURE,
-        DEFAULT_FOCAL_LENGTH,
+        default_aperature,
+        default_focal_length,
     );
 
-    let DEFAULT_MATERIAL: RenderableMaterial =
+    let default_material: RenderableMaterial =
         RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
-    let DEFAULT_SPHERE: Sphere = Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, DEFAULT_MATERIAL);
-    let DEFAULT_WORLD: RenderableList = RenderableList {
-        objects: vec![Object::Sphere(DEFAULT_SPHERE)],
+    let default_sphere: Sphere = Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, default_material);
+    let default_world: RenderableList = RenderableList {
+        objects: vec![Object::Sphere(default_sphere)],
     };
 
-    let DEFAULT_SCENE: Scene = Scene {
+    let default_scene: Scene = Scene {
         aspect_ratio: 1.0,
         image_width: 400,
         image_height: 400,
         samples_per_pixel: 100,
-        camera: DEFAULT_CAMERA,
-        world: DEFAULT_WORLD,
+        camera: default_camera,
+        world: default_world,
     };
-    DEFAULT_SCENE
+    default_scene
 }
 
 pub fn load_scene<P: AsRef<Path>>(path: P) -> Scene {

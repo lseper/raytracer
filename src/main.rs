@@ -17,13 +17,12 @@ use camera::Camera;
 use material::Material;
 use ray::Ray;
 use renderable::{Renderable, RenderableList};
-use std::{f32::INFINITY, fmt};
+use std::{f32::INFINITY};
 use util::{clamp, Color, Point, Vec3};
 
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 const COLOR_LIM: i32 = 256;
 const BOUNCE_DEPTH: i32 = 50;
