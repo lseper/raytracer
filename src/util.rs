@@ -275,6 +275,7 @@ impl Display for Vec3 {
     }
 }
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Interval {
     pub min: f32,
     pub max: f32

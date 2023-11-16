@@ -5,6 +5,7 @@ pub mod renderable;
 pub mod scene;
 pub mod sphere;
 pub mod util;
+pub mod aabb;
 
 #[macro_use]
 extern crate fstrings;
@@ -18,7 +19,7 @@ use material::Material;
 use ray::Ray;
 use renderable::{Renderable, RenderableList};
 use std::{f32::INFINITY};
-use util::{clamp, Color, Point, Vec3};
+use util::{clamp, Color, Point, Vec3, Interval};
 
 use std::sync::mpsc;
 use std::thread;
@@ -49,7 +50,7 @@ fn ray_color(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color {
     if call_depth >= BOUNCE_DEPTH {
         return Color::zero();
     }
-    let (did_hit, hit_rec) = world.hit(ray, 0.001, INFINITY);
+    let (did_hit, hit_rec) = world.hit(ray, Interval{min: 0.001, max: INFINITY});
     if did_hit {
         // if we hit something, determing how this ray scatters (if at all)
         let (did_scatter, scatter_color, scatter_ray) = hit_rec.material_ptr.scatter(ray, &hit_rec);
@@ -68,7 +69,7 @@ fn create(destination_file_name: &str) {
     const ASPECT_RATIO: f32 = 3.0 / 2.0;
     const IMAGE_WIDTH: i32 = 300;
     const IMAGE_HEIGHT: i32 = ((IMAGE_WIDTH as f32) / ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 50;
+    const SAMPLES_PER_PIXEL: i32 = 20;
     // WORLD
 
     let world = random_scene();
@@ -240,7 +241,7 @@ fn render_multi_threaded(scene_path: &str, mut num_threads: i32) {
 fn main() {
     create("2023_test.json");
     let start = Instant::now();
-    render_multi_threaded("scenes/2023_test.json", 25);
+    render_multi_threaded("scenes/2023_test.json", 5);
     // render("scenes/test.json");
     let elapsed = start.elapsed().as_secs_f32();
     eprintln_f!("scene rendered in {elapsed}");

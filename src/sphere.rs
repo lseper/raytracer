@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::material::RenderableMaterial;
 use crate::ray::Ray;
 use crate::renderable::{HitRecord, Renderable};
-use crate::util::{Point, Vec3};
+use crate::util::{Point, Vec3, Interval};
 // use std::fmt;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -89,7 +89,7 @@ impl Renderable for Sphere {
      * looks like. It is simply the point of intersection minus the center of the sphere. Think about it as we're taking the point on the sphere,
      * pointing directly at the center, and then spinning 180 degrees to point the exact opposite way.
      */
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
+    fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
         let center = if self.is_moving { self.sphere_center(ray.time) } else {self.center};
         let oc = ray.origin - center;
         let a = ray.direction.len_squared();
@@ -104,9 +104,9 @@ impl Renderable for Sphere {
         let root = (-half_b - f32::sqrt(discriminant)) / a;
 
         // find the root that lies within the range of values tmax, tmin can have
-        if root < t_min || t_max < root {
+        if root < interval.min || interval.max < root {
             let root = (-half_b + f32::sqrt(discriminant)) / a;
-            if root < t_min || t_max < root {
+            if root < interval.min || interval.max < root {
                 // no solution within t bounds
                 return (false, HitRecord::nothing());
             }

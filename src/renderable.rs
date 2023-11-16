@@ -4,7 +4,7 @@ use std::fmt;
 use crate::material::{LambertianMaterial, RenderableMaterial};
 use crate::ray::Ray;
 use crate::sphere::Sphere;
-use crate::util::{Color, Point, Vec3};
+use crate::util::{Color, Point, Vec3, Interval};
 
 use serde::{Deserialize, Serialize};
 
@@ -68,7 +68,7 @@ impl HitRecord {
 }
 
 pub trait Renderable {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord);
+    fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord);
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -78,9 +78,9 @@ pub enum Object {
 }
 
 impl Renderable for Object {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
+    fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
         match self {
-            Object::Sphere(s) => s.hit(ray, t_min, t_max),
+            Object::Sphere(s) => s.hit(ray, interval),
         }
     }
 }
@@ -101,13 +101,14 @@ impl RenderableList {
 }
 
 impl Renderable for RenderableList {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
+    fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
         let mut final_rec: HitRecord = HitRecord::nothing();
         let mut hit_anything: bool = false;
-        let mut closest_yet = t_max;
+        let mut closest_yet = interval.max;
 
         for object in &(self.objects) {
-            let (object_did_hit, hit_record) = object.hit(ray, t_min, closest_yet);
+            let new_interval = Interval {min: interval.min, max: closest_yet};
+            let (object_did_hit, hit_record) = object.hit(ray, new_interval);
             if object_did_hit {
                 hit_anything = true;
                 closest_yet = hit_record.t;
