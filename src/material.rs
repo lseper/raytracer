@@ -44,7 +44,7 @@ impl Material for LambertianMaterial {
         if scatter_direction.near_zero() {
             scatter_direction = hit_record.normal;
         }
-        let scattered = Ray::new(hit_record.point, scatter_direction);
+        let scattered = Ray::new_with_time(hit_record.point, scatter_direction, r_in.time);
         (true, self.albedo, scattered)
     }
 }
@@ -82,9 +82,10 @@ impl Material for Metal {
          * if there is any fuzziness ( > 0.0) then it will add some offset in a unit sphere
          * around where the actual reflection would be
          */
-        let scattered = Ray::new(
+        let scattered = Ray::new_with_time(
             hit_record.point,
             reflected + (self.fuzziness * Point::random_in_unit_sphere()),
+            r_in.time
         );
         return (
             scattered.direction.dot(hit_record.normal) > 0.0,
@@ -167,7 +168,7 @@ impl Material for Dielectric {
         }
         // refraction can, and (and so it does) occur
 
-        let scattered = Ray::new(hit_record.point, direction);
+        let scattered = Ray::new_with_time(hit_record.point, direction, r_in.time);
         (true, attenuation, scattered)
     }
 }

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::material::RenderableMaterial;
 use crate::ray::Ray;
 use crate::renderable::{HitRecord, Renderable};
-use crate::util::Point;
+use crate::util::{Point, Vec3};
 // use std::fmt;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -13,6 +13,8 @@ pub struct Sphere {
     pub center: Point,
     pub r: f32,
     pub material: RenderableMaterial,
+    pub is_moving: bool,
+    pub center_vec: Vec3,
 }
 
 impl Sphere {
@@ -21,7 +23,23 @@ impl Sphere {
             center,
             r: radius,
             material,
+            is_moving: false,
+            center_vec: Vec3::zero()
         }
+    }
+
+    pub fn new_moving(center: Point, radius: f32, material: RenderableMaterial, center2: Point) -> Sphere {
+        Self {
+            center,
+            r: radius,
+            material,
+            is_moving: true,
+            center_vec: center2 - center
+        }
+    }
+
+    pub fn sphere_center(&self, time: f32) -> Point {
+        self.center + (time * self.center_vec) 
     }
 }
 
@@ -72,7 +90,8 @@ impl Renderable for Sphere {
      * pointing directly at the center, and then spinning 180 degrees to point the exact opposite way.
      */
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> (bool, HitRecord) {
-        let oc = ray.origin - self.center;
+        let center = if self.is_moving { self.sphere_center(ray.time) } else {self.center};
+        let oc = ray.origin - center;
         let a = ray.direction.len_squared();
         let half_b = oc.dot(ray.direction);
         let c = oc.len_squared() - (self.r * self.r);
@@ -92,14 +111,14 @@ impl Renderable for Sphere {
                 return (false, HitRecord::nothing());
             }
             let hr_point = ray.at(root);
-            let normal = (hr_point - self.center) / self.r;
+            let normal = (hr_point - center) / self.r;
             let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
             hit_record.set_face_normal(ray, &normal);
             return (true, hit_record);
         }
 
         let hr_point = ray.at(root);
-        let normal = (hr_point - self.center) / self.r;
+        let normal = (hr_point - center) / self.r;
         let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);

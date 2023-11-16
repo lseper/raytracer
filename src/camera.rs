@@ -1,5 +1,5 @@
 use crate::ray::Ray;
-use crate::util::{degrees_to_radians, Point, Vec3};
+use crate::util::{degrees_to_radians, Point, Vec3, random_between_0_1};
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -60,9 +60,11 @@ impl Camera {
         let disk_samp = self.lens_radius * Vec3::random_in_unit_disk();
         // calculate the offset in reference to the origin (this ties back to how u, v are calculated in constructor)
         let offset = (self.u * disk_samp.x()) + (self.v * disk_samp.y());
-        Ray::new(
+        let ray_time = random_between_0_1();
+        Ray::new_with_time(
             self.origin + offset,
             self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin - offset,
+            ray_time
         )
     }
 }

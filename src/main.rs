@@ -68,7 +68,7 @@ fn create(destination_file_name: &str) {
     const ASPECT_RATIO: f32 = 3.0 / 2.0;
     const IMAGE_WIDTH: i32 = 300;
     const IMAGE_HEIGHT: i32 = ((IMAGE_WIDTH as f32) / ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 100;
+    const SAMPLES_PER_PIXEL: i32 = 50;
     // WORLD
 
     let world = random_scene();
@@ -240,7 +240,7 @@ fn render_multi_threaded(scene_path: &str, mut num_threads: i32) {
 fn main() {
     create("2023_test.json");
     let start = Instant::now();
-    render_multi_threaded("scenes/2023_test.json", 50);
+    render_multi_threaded("scenes/2023_test.json", 25);
     // render("scenes/test.json");
     let elapsed = start.elapsed().as_secs_f32();
     eprintln_f!("scene rendered in {elapsed}");

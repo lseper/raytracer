@@ -121,7 +121,8 @@ pub fn random_scene() -> RenderableList {
                     let albedo: Color = Color::random(0.0, 1.0);
                     let sphere_material =
                         RenderableMaterial::Lambertian(LambertianMaterial::new(albedo));
-                    world.add(Object::Sphere(Sphere::new(center, 0.2, sphere_material)));
+                    let center2 = center + Vec3::new(0.0, random_in_range(0.0, 0.5), 0.0);
+                    world.add(Object::Sphere(Sphere::new_moving(center, 0.2, sphere_material, center2)));
                 } else if choose_material < 0.95 {
                     // metal
                     let albedo = Color::random(0.5, 1.0);

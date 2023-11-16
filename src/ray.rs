@@ -3,11 +3,16 @@ use crate::util::{Point, Vec3};
 pub struct Ray {
     pub origin: Point,
     pub direction: Vec3,
+    pub time: f32,
 }
 
 impl Ray {
     pub fn new(origin: Point, direction: Vec3) -> Ray {
-        Ray { origin, direction }
+        Ray { origin, direction, time: 0.0}
+    }
+
+    pub fn new_with_time(origin: Point, direction: Vec3, time: f32) -> Ray {
+        Ray { origin, direction, time}
     }
 
     pub fn at(&self, t: f32) -> Point {
