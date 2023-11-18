@@ -18,6 +18,10 @@ pub fn random_in_range(min: f32, max: f32) -> f32 {
     min + (max - min) * random_between_0_1()
 }
 
+pub fn random_int(min: i32, max: i32) -> i32 {
+    f32::round(random_in_range(min as f32, (max + 1) as f32)) as i32
+}
+
 pub fn clamp(x: f32, min: f32, max: f32) -> f32 {
     if x < min {
         return min;
@@ -282,6 +286,10 @@ pub struct Interval {
 }
 
 impl Interval {
+    pub fn new_from_intervals(a: Self, b: Self) -> Self {
+        Self { min: f32::min(a.min, b.min), max: f32::max(a.max, b.max)}
+    }
+
     pub fn contains(&self, x: f32) -> bool {
         self.min <= x && x <= self.max
     }

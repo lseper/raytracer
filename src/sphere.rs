@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::aabb::AABB;
 use crate::material::RenderableMaterial;
 use crate::ray::Ray;
 use crate::renderable::{HitRecord, Renderable};
@@ -15,26 +16,34 @@ pub struct Sphere {
     pub material: RenderableMaterial,
     pub is_moving: bool,
     pub center_vec: Vec3,
+    pub bbox: AABB,
 }
 
 impl Sphere {
     pub fn new(center: Point, radius: f32, material: RenderableMaterial) -> Sphere {
+        // aabb(center1 - rvec, center1 + rvec);
+        let radius_vec = Vec3::new(radius, radius, radius);
         Self {
             center,
             r: radius,
             material,
             is_moving: false,
-            center_vec: Vec3::zero()
+            center_vec: Vec3::zero(),
+            bbox: AABB::new_from_pts(center - radius_vec, center + radius_vec)
         }
     }
 
     pub fn new_moving(center: Point, radius: f32, material: RenderableMaterial, center2: Point) -> Sphere {
+        let radius_vec = Vec3::new(radius, radius, radius);
+        let start_box = AABB::new_from_pts(center - radius_vec, center + radius_vec);
+        let end_box = AABB::new_from_pts(center2 - radius_vec, center2 + radius_vec);
         Self {
             center,
             r: radius,
             material,
             is_moving: true,
-            center_vec: center2 - center
+            center_vec: center2 - center,
+            bbox: AABB::new_from_bbox(start_box, end_box)
         }
     }
 
@@ -122,6 +131,10 @@ impl Renderable for Sphere {
         let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);
+    }
+
+    fn bounding_box(&self) -> AABB {
+        self.bbox
     }
 }
 

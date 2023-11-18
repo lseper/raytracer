@@ -1,6 +1,7 @@
 use std::fmt;
 // use std::rc::Rc;
 
+use crate::aabb::AABB;
 use crate::material::{LambertianMaterial, RenderableMaterial};
 use crate::ray::Ray;
 use crate::sphere::Sphere;
@@ -69,18 +70,30 @@ impl HitRecord {
 
 pub trait Renderable {
     fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord);
+    fn bounding_box(&self) -> AABB {
+        AABB::empty()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(tag = "type")] // will expect { type: "Sphere", ... } in JSON format
 pub enum Object {
     Sphere(Sphere),
+    AABB(AABB),
 }
 
 impl Renderable for Object {
     fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
         match self {
             Object::Sphere(s) => s.hit(ray, interval),
+            Object::AABB(aabb) => aabb.hit(ray, interval)
+        }
+    }
+
+    fn bounding_box(&self) -> AABB {
+        match self {
+            Object::Sphere(s) => s.bounding_box(),
+            Object::AABB(aabb) => *aabb
         }
     }
 }
@@ -88,15 +101,17 @@ impl Renderable for Object {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderableList {
     pub objects: Vec<Object>,
+    pub bbox: AABB
 }
 
 impl RenderableList {
     pub fn new() -> Self {
-        Self { objects: vec![] }
+        Self { objects: vec![], bbox: AABB::empty()}
     }
 
     pub fn add(&mut self, to_render: Object) {
         self.objects.push(to_render);
+        self.bbox = AABB::new_from_bbox(self.bbox, to_render.bounding_box())
     }
 }
 
@@ -117,6 +132,10 @@ impl Renderable for RenderableList {
         }
 
         (hit_anything, final_rec)
+    }
+
+    fn bounding_box(&self) -> AABB {
+        self.bbox
     }
 }
 

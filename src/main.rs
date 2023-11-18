@@ -12,7 +12,7 @@ extern crate fstrings;
 
 use crate::{
     scene::{default_scene, load_scene, random_scene, save_scene, Scene, SceneMetaData},
-    util::random_between_0_1,
+    util::random_between_0_1, aabb::AABB,
 };
 use camera::Camera;
 use material::Material;
@@ -65,6 +65,7 @@ fn ray_color(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color {
     skybox
 }
 
+// TODO: add support for BVH
 fn create(destination_file_name: &str) {
     const ASPECT_RATIO: f32 = 3.0 / 2.0;
     const IMAGE_WIDTH: i32 = 300;
@@ -165,7 +166,10 @@ fn render_multi_threaded(scene_path: &str, mut num_threads: i32) {
 
     for thread in 0..num_threads {
         let objects = scene.world.objects.clone();
-        let thread_world = RenderableList { objects };
+        let mut thread_world = RenderableList::new();
+        for obj in objects {
+            thread_world.add(obj)
+        }
         let pixel_value_transmitter = pixel_value_transmitter.clone();
         let scanline_completion_transmitter = scanline_completion_transmitter.clone();
         let mut pixels =

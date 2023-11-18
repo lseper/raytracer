@@ -9,9 +9,10 @@ use std::fs;
 // use std::io::Write;
 // use std::rc::Rc;
 
+use crate::aabb::{AABB, BvhNode};
 use crate::camera::Camera;
 use crate::material::{Dielectric, LambertianMaterial, Metal, RenderableMaterial};
-use crate::renderable::{Object, RenderableList};
+use crate::renderable::{Object, RenderableList, Renderable};
 use crate::sphere::Sphere;
 use crate::util::{random_between_0_1, random_in_range, Color, Point, Vec3};
 
@@ -66,8 +67,10 @@ pub fn default_scene() -> Scene {
     let default_material: RenderableMaterial =
         RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
     let default_sphere: Sphere = Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, default_material);
+    let default_obj = Object::Sphere(default_sphere);
     let default_world: RenderableList = RenderableList {
-        objects: vec![Object::Sphere(default_sphere)],
+        objects: vec![default_obj],
+        bbox: AABB::new_from_bbox(AABB::empty(), default_obj.bounding_box())
     };
 
     let default_scene: Scene = Scene {
@@ -162,4 +165,77 @@ pub fn random_scene() -> RenderableList {
     )));
 
     world
+}
+
+pub fn random_scene_bvh() -> BvhNode {
+    let mut world: RenderableList = RenderableList::new();
+
+    let material_ground =
+        RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.5, 0.5, 0.5)));
+    let ground = Object::Sphere(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        material_ground,
+    ));
+    world.add(ground);
+
+    // generate the spheres
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_material = random_between_0_1();
+            let center = Point::new(
+                a as f32 + 0.9 * random_between_0_1(),
+                0.2,
+                b as f32 + 0.9 * random_between_0_1(),
+            );
+
+            if (center - Point::new(4.0, 0.2, 0.0)).len() > 0.9 {
+                if choose_material < 0.8 {
+                    // diffuse
+                    let albedo: Color = Color::random(0.0, 1.0);
+                    let sphere_material =
+                        RenderableMaterial::Lambertian(LambertianMaterial::new(albedo));
+                    let center2 = center + Vec3::new(0.0, random_in_range(0.0, 0.5), 0.0);
+                    world.add(Object::Sphere(Sphere::new_moving(center, 0.2, sphere_material, center2)));
+                } else if choose_material < 0.95 {
+                    // metal
+                    let albedo = Color::random(0.5, 1.0);
+                    let fuzz = random_in_range(0.0, 0.5);
+                    let sphere_material = RenderableMaterial::Metal(Metal::new(albedo, Some(fuzz)));
+                    world.add(Object::Sphere(Sphere::new(center, 0.2, sphere_material)));
+                } else {
+                    // glass
+                    let sphere_material =
+                        RenderableMaterial::Dielectric(Dielectric::new(Some(1.5)));
+                    world.add(Object::Sphere(Sphere::new(center, 0.2, sphere_material)));
+                }
+            }
+        }
+    }
+
+    let material_1 = RenderableMaterial::Dielectric(Dielectric::new(Some(1.5)));
+    world.add(Object::Sphere(Sphere::new(
+        Point::new(0.0, 1.0, 0.0),
+        1.0,
+        material_1,
+    )));
+
+    let material_2 =
+        RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.4, 0.2, 0.1)));
+    world.add(Object::Sphere(Sphere::new(
+        Point::new(-4.0, 1.0, 0.0),
+        1.0,
+        material_2,
+    )));
+
+    let material_3 = RenderableMaterial::Metal(Metal::new(Color::new(0.7, 0.6, 0.5), Some(0.0)));
+    world.add(Object::Sphere(Sphere::new(
+        Point::new(4.0, 1.0, 0.0),
+        1.0,
+        material_3,
+    )));
+
+    let bvh_world = BvhNode::new_from_renderables(&world.objects);
+
+    bvh_world
 }
