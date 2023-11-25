@@ -304,10 +304,90 @@ impl Interval {
     }
 }
 
+impl PartialEq for Interval {
+    fn eq(&self, other: &Self) -> bool {
+        let min_equal = f32::abs(self.min) - f32::abs(other.min) < f32::EPSILON;
+        let max_equal = f32::abs(self.max) - f32::abs(other.max) < f32::EPSILON;
+        min_equal && max_equal
+    }
+}
+
+impl Eq for Interval {}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
+
+    #[test]
+    fn interval_zero_and_positive_should_contain() {
+        let i = Interval {min: 0.0, max: 5.0};
+        let result = i.contains(3.0);
+        assert!(result)
+    }
+
+    #[test]
+    fn interval_zero_and_positive_should_not_contain_larger_positive() {
+        let i = Interval {min: 0.0, max: 5.0};
+        let result = i.contains(6.0);
+        assert!(!result)
+    }
+
+    #[test]
+    fn interval_zero_and_positive_should_not_contain_negative() {
+        let i = Interval {min: 0.0, max: 5.0};
+        let result = i.contains(-1.0);
+        assert!(!result)
+    }
+    
+    #[test]
+    fn interval_zero_and_negative_should_contain() {
+        let i = Interval {min: -10.0, max: 0.0};
+        let result = i.contains(-4.0);
+        assert!(result)
+    }
+
+    #[test]
+    fn interval_zero_and_negative_should_not_contain_smaller_negative() {
+        let i = Interval {min: -10.0, max: 0.0};
+        let result = i.contains(-12.0);
+        assert!(!result)
+    }
+
+    #[test]
+    fn interval_negative_and_positive_should_contain_zero() {
+        let i = Interval {min: -10.0, max: 4.0};
+        let result = i.contains(0.0);
+        assert!(result)
+    }
+
+    #[test]
+    fn interval_negative_and_positive_should_contain_positive() {
+        let i = Interval {min: -10.0, max: 4.0};
+        let result = i.contains(2.5);
+        assert!(result)
+    }
+    
+    #[test]
+    fn interval_negative_and_positive_should_contain_negative() {
+        let i = Interval {min: -10.0, max: 4.0};
+        let result = i.contains(-5.5);
+        assert!(result)
+    }
+
+    #[test]
+    fn interval_negative_and_positive_should_not_contain_smaller_negative() {
+        let i = Interval {min: -10.0, max: 4.0};
+        let result = i.contains(-12.25);
+        assert!(!result)
+    }
+
+    #[test]
+    fn interval_negative_and_positive_should_not_contain_larger_positive() {
+        let i = Interval {min: -10.0, max: 4.0};
+        let result = i.contains(6.25);
+        assert!(!result)
+    }
 
     #[test]
     fn length_squared_is_correct() {
