@@ -1,4 +1,4 @@
-use std::{cmp::Ordering};
+use std::{cmp::Ordering, mem::swap};
 
 use serde::{Deserialize, Serialize};
 
@@ -48,36 +48,47 @@ impl AABB {
             let t1 = f32::max((self.axis(a).min - ray.origin[a as usize]) / ray.direction[a as usize], (self.axis(a).max - ray.origin[a as usize]) / ray.direction[a as usize]);
             interval.min = f32::max(t0, interval.min);
             interval.max = f32::min(t1, interval.max);
-            if (interval.max <= interval.min) {
+            if interval.max <= interval.min {
                 return (false, HitRecord::nothing());
             }
         }
         (true, HitRecord::nothing())
     }
 
+    fn handle_zero(direction_cord: f32) -> f32 {
+        if f32::abs(direction_cord) < f32::EPSILON {
+            if f32::is_sign_negative(direction_cord) {
+                return f32::NEG_INFINITY;
+            }
+            return f32::INFINITY;
+        }
+        1.0 / direction_cord
+    }
+
     // Optimization of ^, based on code from Andrew Kensler at Pixar
     pub fn hit_pixar_optimization(&self, ray: &Ray, mut interval: Interval) -> (bool, HitRecord) {
         for a in 0..3 {
-            let inv_d = 1.0 / ray.direction[a as usize];
+            let inv_d = Self::handle_zero(ray.direction[a as usize]);
             let orig = ray.origin[a as usize];
             
             let mut t0 = (self.axis(a).min - orig) * inv_d;
             let mut t1 = (self.axis(a).max - orig) * inv_d;
 
-            if (inv_d < 0.0) {
+            if inv_d < 0.0 {
                 // swap
-                let temp = t0;
-                t0 = t1;
-                t1 = temp;
+                swap(&mut t0, &mut t1);
             }
 
-            if (t0 > interval.min) {
+            print!("Before Interval: {:#?}", interval);
+            if t0 > interval.min {
                 interval.min = t0;
             }
-            if (t1 < interval.max) {
+            if t1 < interval.max {
                 interval.min = t1;
             }
-            if (interval.max <= interval.min) {
+            print!("After Interval: {:#?}", interval);
+            if interval.max <= interval.min {
+                print!("{} <= {}", interval.max, interval.min);
                 return (false, HitRecord::nothing());
             }
         }
@@ -185,22 +196,25 @@ impl BvhNode {
 
 impl Renderable for BvhNode {
     fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
-        let (did_hit, _hit_rec) = self.bbox.hit(ray, interval);
+        let (did_hit, hit_rec) = self.bbox.hit(ray, interval);
         if !did_hit {
+            print!("missed {:#?}, returning early!", self.bbox);
             return (false, HitRecord::nothing());
         }
         let (did_hit_left, left_hit_rec) = match &self.left {
             Some(node) => node.hit(ray, interval),
-            None => (false, HitRecord::nothing())
+            None => (did_hit, hit_rec)
         };
         let right_interval_max = if did_hit_left { left_hit_rec.t } else { interval.max };
         let (did_hit_right, right_hit_rec) = match &self.right {
             Some(node) => node.hit(ray, Interval { min: interval.min, max: right_interval_max}),
-            None => (false, HitRecord::nothing())
+            None => (did_hit, hit_rec.clone())
         };
         if did_hit_left {
+            print!("hit left!");
             return (did_hit_left, left_hit_rec);
         }
+        print!("hit right!");
         (did_hit_right, right_hit_rec)
 
     }
@@ -467,6 +481,190 @@ mod tests {
     }
 
     // TODO: write tests regarding hit detection with BvHNode World
+    #[test]
+    fn bvh_node_should_not_be_hit_when_ray_misses_completely_did_hit() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
+        let sphere_b = Sphere::new(Point::new(3.0, 1.0, 3.0), 1.0, material);
+        let sphere_c = Sphere::new(Point::new(1.0, -2.0, -2.0), 0.5, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(-10.0, 0.0, 0.0), Point::new(0.0, 0.0, 10.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: -10.0, max:10.0});
+
+        assert!(!did_hit);
+    }
+
+    #[test]
+    fn bvh_node_should_not_be_hit_when_ray_misses_completely_hit_record() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
+        let sphere_b = Sphere::new(Point::new(3.0, 1.0, 3.0), 1.0, material);
+        let sphere_c = Sphere::new(Point::new(1.0, -2.0, -2.0), 0.5, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(-10.0, 0.0, 0.0), Point::new(0.0, 0.0, 10.0));
+
+        let (_did_hit, actual_hit_record) = root.hit(&r, Interval{min: -10.0, max:10.0});
+
+        let expected_hit_record = HitRecord::nothing();
+
+        assert_eq!(expected_hit_record, actual_hit_record);
+    }
+
+    #[test]
+    fn bvh_node_should_be_hit_when_ray_shot_at_root_bvh_node_aabb() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
+        let sphere_b = Sphere::new(Point::new(3.0, 1.0, 3.0), 1.0, material);
+        let sphere_c = Sphere::new(Point::new(1.0, -2.0, -2.0), 0.5, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(2.0, 5.0, 0.0), Point::new(0.0, 0.0, 0.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        assert!(did_hit);
+    }
+
+    #[test]
+    fn bvh_node_should_hit_when_aabb_is_hit() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
+        let renderables = vec![Object::Sphere(sphere_a)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(-2.0, 0.0, 0.0), Point::new(0.0, 0.0, 0.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        assert!(did_hit);
+    }
+
+    #[test]
+    fn bvh_node_should_not_be_hit_when_aabb_is_missed() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
+        let renderables = vec![Object::Sphere(sphere_a)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(-5.0, 0.0, 0.0), Point::new(0.0, 10.0, 0.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        assert!(!did_hit);
+    }
+
+    #[test]
+    fn bvh_node_root_should_record_hit_when_child_bvh_node_hit() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
+        let sphere_b = Sphere::new(Point::new(0.0, -5.0, 0.0), 2.0, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(-5.0, 0.0, 0.0), Point::new(1.0, -5.0, 1.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: -10.0, max:100.0});
+
+        assert!(did_hit);
+    }
+
+
 
 
 }

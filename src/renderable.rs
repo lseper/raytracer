@@ -9,6 +9,7 @@ use crate::util::{Color, Point, Vec3, Interval};
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub struct HitRecord {
     pub point: Point,
     pub normal: Vec3,
@@ -65,6 +66,22 @@ impl HitRecord {
         } else {
             -*outward_normal
         };
+    }
+}
+
+impl PartialEq for HitRecord {
+    fn eq(&self, other: &Self) -> bool {
+        self.point == other.point && self.normal == other.normal && self.t == other.t && self.front_face == other.front_face
+    }
+}
+
+impl Eq for HitRecord {}
+
+impl Copy for HitRecord {}
+
+impl Clone for HitRecord {
+    fn clone(&self) -> Self {
+        HitRecord { point: self.point, normal: self.normal, t: self.t, material_ptr: self.material_ptr, front_face: self.front_face }
     }
 }
 
