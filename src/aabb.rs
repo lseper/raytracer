@@ -2,7 +2,7 @@ use std::{cmp::Ordering, mem::swap};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{util::{Interval, Point, random_int}, renderable::{Renderable, RenderableList, Object}};
+use crate::{util::{Interval, Point, random_int}, renderable::{Renderable, RenderableList, Object}, sphere::Sphere};
 use crate::ray::Ray;
 use crate::renderable::HitRecord;
 
@@ -79,16 +79,13 @@ impl AABB {
                 swap(&mut t0, &mut t1);
             }
 
-            print!("Before Interval: {:#?}", interval);
             if t0 > interval.min {
                 interval.min = t0;
             }
             if t1 < interval.max {
                 interval.min = t1;
             }
-            print!("After Interval: {:#?}", interval);
             if interval.max <= interval.min {
-                print!("{} <= {}", interval.max, interval.min);
                 return (false, HitRecord::nothing());
             }
         }
@@ -102,9 +99,9 @@ impl Renderable for AABB {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct BvhNode {
-    pub bbox: AABB,
+    pub bbox: Object,
     pub left: Option<Box<BvhNode>>,
     pub right: Option<Box<BvhNode>>
 }
@@ -112,34 +109,29 @@ pub struct BvhNode {
 impl BvhNode {
 
     fn root() -> BvhNode {
-        BvhNode { bbox: AABB::empty(), left: None, right: None }
+        BvhNode { bbox: Object::empty(), left: None, right: None }
     }
 
     pub fn new_from_renderables(list: &Vec<Object>) -> BvhNode {
-        let mut root = BvhNode::root();
-        root.new_from_renderables_with_index( list, 0, list.len());
-        root
+        let root = Self::new_from_renderables_with_index(list, 0, list.len());
+        match root {
+            Some(node) => *node,
+            None => Self::root()
+        }
     }
 
-    fn new_leaf(object: &Object) -> Option<Box<BvhNode>> {
-        Some(Box::new(BvhNode { bbox: object.bounding_box(), left: None, right: None }))
-    }
-
-    fn new_from_renderables_with_index(&mut self, list: &Vec<Object>, start: usize, end: usize) {
+    fn new_from_renderables_with_index(list: &Vec<Object>, start: usize, end: usize)-> Option<Box<BvhNode>>{
+        // eprintln!("start: {} end: {} len {}", start, end, list.len());
         let axis = random_int(0, 2);
-
-        let comparator = match axis {
-            0 => Self::box_x_compare,
-            1 => Self::box_y_compare,
-            2 => Self::box_z_compare,
-            _ => Self::box_z_compare
-        };
 
         let object_span = end - start;
         // base case - just make two leaf nodes for the same object
         if object_span == 1 {
-            self.left = Self::new_leaf(&list[start]);
-            self.right = Self::new_leaf(&list[start]);
+            return Some(Box::new(Self {
+                bbox: list[start],
+                left: None,
+                right: None,
+            }));
         }
         // two, assign accordingly
         else if object_span == 2 {
@@ -147,36 +139,44 @@ impl BvhNode {
             //              root
             //              /  \
             //         first    second
-            if Ordering::is_le(comparator(&list[start], &list[start + 1])) {
-                self.left = Self::new_leaf(&list[start]);
-                self.right = Self::new_leaf(&list[start + 1]);
-            } else {
-                self.right = Self::new_leaf(&list[start]);
-                self.left = Self::new_leaf(&list[start + 1]);
-            }
-        } else {
-            let mut rec_list = list[start..end].to_vec();
-            rec_list.sort_by(|a, b| comparator(a, b));
-            let mid = start + (object_span / 2);
-            self.left = Some(Box::new(BvhNode::root()));
-            self.right = Some(Box::new(BvhNode::root()));
-            self.left.as_mut().expect("left childe is defined above").new_from_renderables_with_index(&rec_list, start, mid);
-            self.right.as_mut().expect("right child is defined above").new_from_renderables_with_index(&rec_list, mid, end);
+            let first = Some(Box::new(Self {
+                bbox: list[start],
+                left: None,
+                right: None
+            }));
+            let second = Some(Box::new(Self {
+                bbox: list[start + 1],
+                left: None,
+                right: None,
+            }));
+            let parent_bbox = AABB::new_from_bbox(list[start].bounding_box(), list[start + 1].bounding_box());
+            // TODO: since we only use bbox for checking ANY child node, no need for ordering here.
+            return Some(Box::new(Self {
+                bbox: Object::AABB(parent_bbox),
+                left: first,
+                right: second
+            }));
         }
-        let left_bbox = match &self.left {
-            Some(node) => node.bounding_box(),
-            None => AABB::empty()
+        // Copies the entire list of renderables - not the best performance wise, but slicing accordingly gave 
+        // weird index OOB errors for SPECIFICALLY when the original list passed in was >= 6 objects ???
+        let rec_list = list[..].to_vec();
+        let mid = start + (f32::round(object_span as f32 / 2.0)) as usize;
+        let left = Self::new_from_renderables_with_index(&rec_list, start, mid);
+        let right = Self::new_from_renderables_with_index(&rec_list, mid, end);
+        let bbox = match (&left, &right) {
+            (Some(node_l), Some(node_r)) => AABB::new_from_bbox(node_l.bounding_box(), node_r.bounding_box()),
+            (Some(node_l), None) => node_l.bounding_box(),
+            (None, Some(node_r)) => node_r.bounding_box(),
+            _ => AABB::empty()
         };
-        let right_bbox = match &self.right {
-            Some(node) => node.bounding_box(),
-            None => AABB::empty()
-        };
-        self.bbox = AABB::new_from_bbox(left_bbox, right_bbox);
+        Some(Box::new(Self {
+            bbox: Object::AABB(bbox), left, right
+        }))
         
     }
 
     fn box_compare(a: &Object, b: &Object, axis_index: i32) -> Ordering {
-       let result = a.bounding_box().axis(axis_index).min < b.bounding_box().axis(axis_index).min;
+       let result = a.bounding_box().axis(axis_index).min <= b.bounding_box().axis(axis_index).min;
        match result {
         true => Ordering::Less,
         false => Ordering::Greater
@@ -192,13 +192,10 @@ impl BvhNode {
     fn box_z_compare(a: &Object, b: &Object) -> Ordering {
         Self::box_compare(a, b, 2)
     }
-}
 
-impl Renderable for BvhNode {
-    fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
-        let (did_hit, hit_rec) = self.bbox.hit(ray, interval);
+    fn hit_aabb(&self, aabb: AABB, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
+        let (did_hit, hit_rec) = aabb.hit(ray, interval);
         if !did_hit {
-            print!("missed {:#?}, returning early!", self.bbox);
             return (false, HitRecord::nothing());
         }
         let (did_hit_left, left_hit_rec) = match &self.left {
@@ -211,16 +208,66 @@ impl Renderable for BvhNode {
             None => (did_hit, hit_rec.clone())
         };
         if did_hit_left {
-            print!("hit left!");
             return (did_hit_left, left_hit_rec);
         }
-        print!("hit right!");
         (did_hit_right, right_hit_rec)
+    }
 
+    fn hit_sphere(&self, sphere: Sphere, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
+        let (did_hit_aabb, hit_rec) = sphere.bbox.hit(ray, interval);
+        if did_hit_aabb {
+            let (hit_sphere, sphere_hit_rec) = sphere.hit(ray, interval);
+            return (hit_sphere, sphere_hit_rec);
+        }
+        (did_hit_aabb, hit_rec)
+    }
+}
+
+impl Renderable for BvhNode {
+    fn hit(&self, ray: &Ray, interval: Interval) -> (bool, HitRecord) {
+        let mut final_rec: HitRecord = HitRecord::nothing();
+        let mut hit_anything: bool = false;
+        let mut closest_yet = interval.max;
+
+        let mut to_check = vec![self];
+        while to_check.len() > 0 {
+            let mut new_to_check: Vec<&BvhNode> = vec![];
+            for node in &to_check[..] {
+                let new_interval = Interval {min: interval.min, max: closest_yet};
+                match node.bbox {
+                    Object::AABB(aabb) => {
+                        let (did_hit, _hit_rec) = aabb.hit(ray, new_interval);
+                        if did_hit {
+                            match &node.left {
+                                Some(n) => new_to_check.push(&n),
+                                None => eprint!("Error: reached AABB without Sphere child node")
+                            }
+                            match &node.right {
+                                Some(n) => new_to_check.push(&n),
+                                None => eprint!("Error: reached AABB without Sphere child node")
+                            }
+                        }
+                    }
+                    Object::Sphere(sphere) => {
+                        let (did_hit, hit_rec) = sphere.hit(ray, new_interval);
+                        if did_hit {
+                            closest_yet = hit_rec.t;
+                            hit_anything = true;
+                            final_rec = hit_rec;
+                        }
+                    }
+                };
+            }
+            to_check = new_to_check;
+        }
+        (hit_anything, final_rec)
     }
 
     fn bounding_box(&self) -> AABB {
-        self.bbox
+        match self.bbox {
+            Object::AABB(aabb) => aabb,
+            Object::Sphere(sphere) => sphere.bbox
+        }
     }
 }
 
@@ -276,8 +323,8 @@ mod tests {
         let renderables = vec![Object::Sphere(sphere1), Object::Sphere(sphere2)];
 
         let root = BvhNode::new_from_renderables(&renderables);
-        let left_child_bbox = root.left.expect("root left child should be assigned").bbox;
-        let right_child_bbox = root.right.expect("root right child should be assigned").bbox;
+        let left_child_bbox = root.left.expect("root left child should be assigned").bounding_box();
+        let right_child_bbox = root.right.expect("root right child should be assigned").bounding_box();
         let result = left_child_bbox == sphere1.bbox && right_child_bbox == sphere2.bbox;
         assert!(result)
     }
@@ -292,8 +339,8 @@ mod tests {
         let renderables = vec![Object::Sphere(sphere1), Object::Sphere(sphere2)];
 
         let root = BvhNode::new_from_renderables(&renderables);
-        let left_child_bbox = root.left.expect("root left child should be assigned").bbox;
-        let right_child_bbox = root.right.expect("root right child should be assigned").bbox;
+        let left_child_bbox = root.left.expect("root left child should be assigned").bounding_box();
+        let right_child_bbox = root.right.expect("root right child should be assigned").bounding_box();
         let result = left_child_bbox == sphere1.bbox && right_child_bbox == sphere2.bbox;
         assert!(result)
     }
@@ -323,14 +370,14 @@ mod tests {
         let root = BvhNode::new_from_renderables(&renderables);
 
         // sphere bbox are calculated and assigned accordingly
-        // let child_left_bbox = root.left.expect("should be sphere_a").bbox;
+        // let child_left_bbox = root.left.expect("should be sphere_a").bounding_box();
         // let child_right = root.right.expect("should be a BvhNode");
-        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bbox;
-        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bbox;
+        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bounding_box();
+        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bounding_box();
 
         // total bbox is assigned accordingly
         let expected_total_bbox = AABB::new_from_pts(Point::new(-3.0, -2.5, -3.0), Point::new(4.0, 4.0, 4.0));
-        let actual_total_bbox = root.bbox;
+        let actual_total_bbox = root.bounding_box();
 
         assert_eq!(expected_total_bbox, actual_total_bbox);
     }
@@ -360,14 +407,14 @@ mod tests {
         let root = BvhNode::new_from_renderables(&renderables);
 
         // sphere bbox are calculated and assigned accordingly
-        // let child_left_bbox = root.left.expect("should be sphere_a").bbox;
+        // let child_left_bbox = root.left.expect("should be sphere_a").bounding_box();
         let child_right = root.right.expect("should be a BvhNode");
-        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bbox;
-        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bbox;
+        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bounding_box();
+        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bounding_box();
 
         // total bbox is assigned accordingly
         let expected_right_child_bbox = AABB::new_from_pts(Point::new(0.5, -2.5, -2.5), Point::new(4.0, 2.0, 4.0));
-        let actual_right_child_bbox = child_right.bbox;
+        let actual_right_child_bbox = child_right.bounding_box();
 
         assert_eq!(expected_right_child_bbox, actual_right_child_bbox);
     }
@@ -397,10 +444,10 @@ mod tests {
         let root = BvhNode::new_from_renderables(&renderables);
 
         // sphere bbox are calculated and assigned accordingly
-        let child_left_bbox = root.left.expect("should be sphere_a").bbox;
+        let child_left_bbox = root.left.expect("should be sphere_a").bounding_box();
         // let child_right = root.right.expect("should be a BvhNode");
-        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bbox;
-        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bbox;
+        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bounding_box();
+        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bounding_box();
 
         // total bbox is assigned accordingly
         let expected_left_child_bbox = AABB::new_from_pts(Point::new(0.0, 0.0, 0.0), Point::new(3.0, 3.0, 3.0));
@@ -433,10 +480,10 @@ mod tests {
         let root = BvhNode::new_from_renderables(&renderables);
 
         // sphere bbox are calculated and assigned accordingly
-        // let child_left_bbox = root.left.expect("should be sphere_a").bbox;
+        // let child_left_bbox = root.left.expect("should be sphere_a").bounding_box();
         let child_right = root.right.expect("should be a BvhNode");
-        let child_right_left_bbox = child_right.left.expect("should be sphere c").bbox;
-        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bbox;
+        let child_right_left_bbox = child_right.left.expect("should be sphere c").bounding_box();
+        // let child_right_right_bbox = child_right.right.expect("should be sphere b").bounding_box();
 
         // total bbox is assigned accordingly
         let expected_left_child_bbox = sphere_c.bbox;
@@ -469,10 +516,10 @@ mod tests {
         let root = BvhNode::new_from_renderables(&renderables);
 
         // sphere bbox are calculated and assigned accordingly
-        // let child_left_bbox = root.left.expect("should be sphere_a").bbox;
+        // let child_left_bbox = root.left.expect("should be sphere_a").bounding_box();
         let child_right = root.right.expect("should be a BvhNode");
-        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bbox;
-        let child_right_right_bbox = child_right.right.expect("should be sphere b").bbox;
+        // let child_right_left_bbox = child_right.left.expect("should be sphere c").bounding_box();
+        let child_right_right_bbox = child_right.right.expect("should be sphere b").bounding_box();
 
         // total bbox is assigned accordingly
         let expected_right_child_bbox = sphere_b.bbox;
@@ -651,20 +698,207 @@ mod tests {
          * y           |  C  |
          * y           |_____|
          */  
-        let sphere_a = Sphere::new(Point::new(0.0, 0.0, 0.0), 3.0, material);
-        let sphere_b = Sphere::new(Point::new(0.0, -5.0, 0.0), 2.0, material);
+        let sphere_a = Sphere::new(Point::new(0.0, 3.0, 3.0), 3.0, material);
+        let sphere_b = Sphere::new(Point::new(0.0, -3.0, -3.0), 3.0, material);
         let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b)];
 
         let root = BvhNode::new_from_renderables(&renderables);
 
-        let r = Ray::new(Point::new(-5.0, 0.0, 0.0), Point::new(1.0, -5.0, 1.0));
+        let r = Ray::new(Point::new(-5.0, 0.0, 0.0), Point::new(0.0, -3.0, -3.0));
 
-        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: -10.0, max:100.0});
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: -10.0, max:00.0});
 
         assert!(did_hit);
     }
 
+    #[test]
+    fn bvh_node_should_be_hit_when_ray_shot_at_child_bvh_node_aabb_negative_axis() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+        let sphere_b = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0, material);
+        let sphere_c = Sphere::new(Point::new(5.0, 5.0, 0.0), 2.0, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
 
+        let root = BvhNode::new_from_renderables(&renderables);
 
+        let r = Ray::new(Point::new(-5.0, -5.0, -5.0), Point::new(-5.0, -5.0, 0.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        assert!(did_hit);
+    }
+
+    #[test]
+    fn bvh_node_should_be_hit_when_ray_shot_at_child_bvh_node_aabb_neutral_axis() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+        let sphere_b = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0, material);
+        let sphere_c = Sphere::new(Point::new(5.0, 5.0, 0.0), 2.0, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(0.0, 0.0, -5.0), Point::new(0.0, 0.0, 0.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        assert!(did_hit);
+    }
+
+    #[test]
+    fn bvh_node_should_be_hit_when_ray_shot_at_child_bvh_node_aabb_positive_axis() {
+        let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+        let sphere_b = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0, material);
+        let sphere_c = Sphere::new(Point::new(5.0, 5.0, 0.0), 2.0, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(5.0, 5.0, -5.0), Point::new(5.0, 5.0, 0.0));
+
+        let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        assert!(did_hit);
+    }
+
+    #[ignore]
+    #[test]
+    fn bvh_node_hit_point_should_be_on_correct_renderable_when_hit_positive_axis() {
+        let material: RenderableMaterial = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+        // a lower min for an axis = left
+        /*
+         * Scene structire: 
+         * y
+         * y ______
+         * y|      |      __
+         * y|   A  |     |B_| z = 
+         * y|______|     
+         * x/z -----------------------                         
+         * y            _____
+         * y           |  C  |
+         * y           |_____|
+         */  
+        let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+        let sphere_b = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0, material);
+        let sphere_c = Sphere::new(Point::new(5.0, 5.0, 0.0), 2.0, material);
+        let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+        let root = BvhNode::new_from_renderables(&renderables);
+
+        let r = Ray::new(Point::new(-5.0, -5.0, -5.0), Point::new(-5.0, -5.0, 0.0));
+
+        let (did_hit, actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+        let actual_hit_point = actual_hit_record.point;
+        let expected_hit_point = Point::new(-5.0, -5.0, -3.0);
+
+        assert_eq!(actual_hit_point, expected_hit_point);
+    }
+
+    // #[test]
+    // fn bvh_node_should_be_hit_when_ray_shot_at_child_bvh_node_aabb_neutral_axis() {
+    //     let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+    //     // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+    //     // a lower min for an axis = left
+    //     /*
+    //      * Scene structire: 
+    //      * y
+    //      * y ______
+    //      * y|      |      __
+    //      * y|   A  |     |B_| z = 
+    //      * y|______|     
+    //      * x/z -----------------------                         
+    //      * y            _____
+    //      * y           |  C  |
+    //      * y           |_____|
+    //      */  
+    //     let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+    //     let sphere_b = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0, material);
+    //     let sphere_c = Sphere::new(Point::new(5.0, 5.0, 0.0), 2.0, material);
+    //     let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+    //     let root = BvhNode::new_from_renderables(&renderables);
+
+    //     let r = Ray::new(Point::new(0.0, 0.0, -5.0), Point::new(0.0, 0.0, 0.0));
+
+    //     let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+    //     assert!(did_hit);
+    // }
+
+    // #[test]
+    // fn bvh_node_should_be_hit_when_ray_shot_at_child_bvh_node_aabb_positive_axis() {
+    //     let material = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+    //     // because of how we randomly assign left vs. right children by random axis choice, sphere2 is contained completely in sphere 1 for testability
+    //     // a lower min for an axis = left
+    //     /*
+    //      * Scene structire: 
+    //      * y
+    //      * y ______
+    //      * y|      |      __
+    //      * y|   A  |     |B_| z = 
+    //      * y|______|     
+    //      * x/z -----------------------                         
+    //      * y            _____
+    //      * y           |  C  |
+    //      * y           |_____|
+    //      */  
+    //     let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+    //     let sphere_b = Sphere::new(Point::new(0.0, 0.0, 0.0), 2.0, material);
+    //     let sphere_c = Sphere::new(Point::new(5.0, 5.0, 0.0), 2.0, material);
+    //     let renderables = vec![Object::Sphere(sphere_a), Object::Sphere(sphere_b), Object::Sphere(sphere_c)];
+
+    //     let root = BvhNode::new_from_renderables(&renderables);
+
+    //     let r = Ray::new(Point::new(5.0, 5.0, -5.0), Point::new(5.0, 5.0, 0.0));
+
+    //     let (did_hit, _actual_hit_record) = root.hit(&r, Interval{min: 0.0, max:10.0});
+
+    //     assert!(did_hit);
+    // }
 
 }

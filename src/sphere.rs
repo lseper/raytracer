@@ -138,6 +138,28 @@ impl Renderable for Sphere {
     }
 }
 
+impl PartialEq for Sphere {
+    fn eq(&self, other: &Self) -> bool {
+        self.center == other.center && self.is_moving && other.is_moving && self.center_vec == other.center_vec && self.bbox == other.bbox && self.r == other.r && self.material == other.material
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{util::Color, material::LambertianMaterial};
+
+    use super::*;
+
+    #[test]
+    fn sphere_is_hit_when_ray_cast_hitting_directly() {
+        let material: RenderableMaterial = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
+        let r = Ray::new(Point::new(-5.0, -5.0, -5.0), Point::new(-5.0, -5.0, 0.0));
+        let (did_hit, _actual_hit_record) = sphere_a.hit(&r, Interval{min: 0.0, max:10.0});
+        assert!(did_hit)
+    }
+}
+
 // impl fmt::Display for Sphere {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //         write!(f, "{{\n\t\"center\": {{\n\t\t\"vec\": {} \n\t}},\n\t\"r\": {},\n\t\"material\": {{\n{}\n\t}} \n}},\n", self.center, self.r, self.material)

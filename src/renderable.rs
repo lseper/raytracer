@@ -115,6 +115,22 @@ impl Renderable for Object {
     }
 }
 
+impl Object {
+    pub fn empty() -> Object {
+        Object::AABB(AABB::empty())
+    }
+}
+
+impl PartialEq for Object {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Object::AABB(aabb_1), Object::AABB(aabb_2)) => aabb_1 == aabb_2,
+            (Object::Sphere(sphere_1), Object::Sphere(sphere_2)) => sphere_1 == sphere_2,
+            _ => false
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderableList {
     pub objects: Vec<Object>,

@@ -49,6 +49,12 @@ impl Material for LambertianMaterial {
     }
 }
 
+impl PartialEq for LambertianMaterial {
+    fn eq(&self, other: &Self) -> bool {
+        self.albedo == other.albedo
+    }
+}
+
 impl fmt::Display for LambertianMaterial {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -92,6 +98,12 @@ impl Material for Metal {
             self.albedo,
             scattered,
         );
+    }
+}
+
+impl PartialEq for Metal {
+    fn eq(&self, other: &Self) -> bool {
+        self.albedo == other.albedo && self.fuzziness == other.fuzziness
     }
 }
 
@@ -170,6 +182,23 @@ impl Material for Dielectric {
 
         let scattered = Ray::new_with_time(hit_record.point, direction, r_in.time);
         (true, attenuation, scattered)
+    }
+}
+
+impl PartialEq for Dielectric {
+    fn eq(&self, other: &Self) -> bool {
+        self.ir == other.ir
+    }
+}
+
+impl PartialEq for RenderableMaterial {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (RenderableMaterial::Dielectric(d_1), RenderableMaterial::Dielectric(d_2)) => d_1 == d_2,
+            (RenderableMaterial::Lambertian(l_1), RenderableMaterial::Lambertian(l_2)) => l_1 == l_2,
+            (RenderableMaterial::Metal(m_1), RenderableMaterial::Metal(m_2)) => m_1 == m_2,
+            _ => false
+        }
     }
 }
 
