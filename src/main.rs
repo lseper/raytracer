@@ -15,7 +15,8 @@ extern crate fstrings;
 use std::env;
 
 use crate::{
-    aabb::AABB, scene::{default_scene, load_scene, random_scene, save_scene, test_scene, Scene, SceneMetaData}, scene_builder::{create, create_checker_test, create_test}, util::random_between_0_1
+    aabb::AABB, scene::{default_scene, load_scene, random_scene, save_scene, test_scene, Scene, SceneMetaData}, 
+    scene_builder::{ create, create_checker_test, create_test, create_checker_spheres_test }, util::random_between_0_1
 };
 use aabb::BvhNode;
 use camera::Camera;
@@ -65,7 +66,7 @@ fn ray_color_world(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color 
         let (did_scatter, scatter_color, scatter_ray) = hit_rec.material_ptr.scatter(ray, &hit_rec);
         if did_scatter {
             // if we do scatter,
-            return scatter_color.value(0.0, 0.0, &hit_rec.point) * ray_color_world(&scatter_ray, world, call_depth + 1);
+            return scatter_color * ray_color_world(&scatter_ray, world, call_depth + 1);
         }
     }
     let unit_direction: Vec3 = ray.direction.unit_vector();
@@ -84,7 +85,7 @@ fn ray_color_bvh_node(ray: &Ray, root: &BvhNode, call_depth: i32) -> Color {
         let (did_scatter, scatter_color, scatter_ray) = hit_rec.material_ptr.scatter(ray, &hit_rec);
         if did_scatter {
             // if we do scatter,
-            return scatter_color.value(0.0, 0.0, &hit_rec.point) * ray_color_bvh_node(&scatter_ray, root, call_depth + 1);
+            return scatter_color * ray_color_bvh_node(&scatter_ray, root, call_depth + 1);
         }
     }
     let unit_direction: Vec3 = ray.direction.unit_vector();
@@ -374,9 +375,10 @@ fn main() {
     env::set_var("RUST_BACKTRACE", "1");
     // create_test("./test-texture.json");
     // create("test-texture.json");
-    create_checker_test("test-checker-texture.json");
+    // create_checker_test("test-checker-texture.json");
+    create_checker_spheres_test("two-spheres-checker-texture.json");
     let start = Instant::now();
-    render_multi_threaded("scenes/test-checker-texture.json", 10);
+    render_multi_threaded("scenes/two-spheres-checker-texture.json", 10);
     // render("scenes/test.json");
     let elapsed = start.elapsed().as_secs_f32();
     eprintln_f!("scene rendered in {elapsed}");

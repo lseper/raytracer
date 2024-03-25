@@ -109,6 +109,28 @@ pub fn load_scene<P: AsRef<Path>>(path: P) -> Scene {
     s
 }
 
+pub fn two_spheres() -> RenderableList {
+    let mut world: RenderableList = RenderableList::new();
+    let checker = RenderableTexture::CheckerTexture(CheckerTexture::new_from_colors(0.2, Color::new(0.2, 0.3, 0.1), Color::new(0.9, 0.9, 0.9)));
+
+    let top_sphere = Object::Sphere(Sphere::new(
+        Point::new(0.0, 10.0, 0.0),
+        10.0,
+        RenderableMaterial::Lambertian(LambertianMaterial::new(checker)),
+    ));
+    let bottom_sphere = Object::Sphere(Sphere::new(
+        Point::new(0.0, -10.0, 0.0),
+        10.0,
+        RenderableMaterial::Lambertian(LambertianMaterial::new(checker)),
+    ));
+
+    world.add(top_sphere);
+    world.add(bottom_sphere);
+    
+    world
+}
+
+
 pub fn test_scene() -> RenderableList {
     let mut world: RenderableList = RenderableList::new();
 

@@ -51,6 +51,16 @@ impl Sphere {
     pub fn sphere_center(&self, time: f32) -> Point {
         self.center + (time * self.center_vec) 
     }
+
+    fn get_sphere_uv(p: &Point) -> (f32, f32) {
+        let theta = f32::acos(-p.y());
+        let phi = f32::atan2(-p.z(), p.x()) + std::f32::consts::PI;
+
+        let u = phi / (2.0 * std::f32::consts::PI);
+        let v = theta / std::f32::consts::PI;
+
+        (u, v)
+    }
 }
 
 impl Renderable for Sphere {
@@ -123,14 +133,16 @@ impl Renderable for Sphere {
             let hr_point = ray.at(root);
             let normal = (hr_point - center) / self.r;
             // TODO: actually set correct u, v values
-            let mut hit_record = HitRecord::new(hr_point, normal, root, 0.0, 0.0, false, self.material);
+            let (u, v) = Sphere::get_sphere_uv(&hr_point);
+            let mut hit_record = HitRecord::new(hr_point, normal, root, u, v, false, self.material);
             hit_record.set_face_normal(ray, &normal);
             return (true, hit_record);
         }
 
         let hr_point = ray.at(root);
         let normal = (hr_point - center) / self.r;
-        let mut hit_record = HitRecord::new(hr_point, normal, root, 0.0, 0.0, false, self.material);
+        let (u, v) = Sphere::get_sphere_uv(&hr_point);
+        let mut hit_record = HitRecord::new(hr_point, normal, root, u, v, false, self.material);
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);
     }

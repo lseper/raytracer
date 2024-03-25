@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::ray::Ray;
 use crate::renderable::HitRecord;
-use crate::texture::{RenderableTexture, SolidColor};
-use crate::util::{random_between_0_1, Point, Vec3};
+use crate::texture::{RenderableTexture, SolidColor, Texture};
+use crate::util::{random_between_0_1, Color, Point, Vec3};
 use std::fmt;
 pub trait Material {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray);
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray);
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -18,7 +18,7 @@ pub enum RenderableMaterial {
 }
 
 impl Material for RenderableMaterial {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
         match self {
             RenderableMaterial::Lambertian(lm) => lm.scatter(r_in, hit_record),
             RenderableMaterial::Metal(m) => m.scatter(r_in, hit_record),
@@ -40,13 +40,13 @@ impl LambertianMaterial {
 }
 
 impl Material for LambertianMaterial {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
         let mut scatter_direction = hit_record.normal + Vec3::random_unit_vector();
         if scatter_direction.near_zero() {
             scatter_direction = hit_record.normal;
         }
         let scattered = Ray::new_with_time(hit_record.point, scatter_direction, r_in.time);
-        (true, self.albedo, scattered)
+        (true, self.albedo.value(hit_record.u, hit_record.v, &hit_record.point), scattered)
     }
 }
 
@@ -83,7 +83,7 @@ impl Metal {
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
         let reflected = Vec3::reflect(r_in.direction.unit_vector(), hit_record.normal);
         /*
          * if there is any fuzziness ( > 0.0) then it will add some offset in a unit sphere
@@ -96,7 +96,7 @@ impl Material for Metal {
         );
         return (
             scattered.direction.dot(hit_record.normal) > 0.0,
-            self.albedo,
+            self.albedo.value(hit_record.u, hit_record.v, &hit_record.point),
             scattered,
         );
     }
@@ -159,9 +159,9 @@ impl Material for Dielectric {
      * And we know that cos(theta) is equal to R * n, given R and n are both unit vectors
      * so our final solution for sin(theta) = sqrt(1 - |R * n|^2)
      */
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
         // doesn't dim the reflection at all, full brightness and full RenderableTexture
-        let attenuation = RenderableTexture::SolidColor(SolidColor::from_values(1.0, 1.0, 1.0));
+        let attenuation = Color::new(1.0, 1.0, 1.0);
         let refraction_ratio = if hit_record.front_face {
             1.0 / self.ir
         } else {
