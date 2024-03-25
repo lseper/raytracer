@@ -6,6 +6,8 @@ pub mod scene;
 pub mod sphere;
 pub mod util;
 pub mod aabb;
+pub mod scene_builder;
+pub mod texture;
 
 #[macro_use]
 extern crate fstrings;
@@ -13,14 +15,14 @@ extern crate fstrings;
 use std::env;
 
 use crate::{
-    scene::{default_scene, load_scene, random_scene, save_scene, Scene, SceneMetaData, test_scene},
-    util::random_between_0_1, aabb::AABB,
+    aabb::AABB, scene::{default_scene, load_scene, random_scene, save_scene, test_scene, Scene, SceneMetaData}, scene_builder::{create, create_checker_test, create_test}, util::random_between_0_1
 };
 use aabb::BvhNode;
 use camera::Camera;
 use material::Material;
 use ray::Ray;
 use renderable::{Renderable, RenderableList};
+use texture::Texture;
 use std::{f32::INFINITY};
 use util::{clamp, Color, Point, Vec3, Interval};
 
@@ -63,7 +65,7 @@ fn ray_color_world(ray: &Ray, world: &RenderableList, call_depth: i32) -> Color 
         let (did_scatter, scatter_color, scatter_ray) = hit_rec.material_ptr.scatter(ray, &hit_rec);
         if did_scatter {
             // if we do scatter,
-            return scatter_color * ray_color_world(&scatter_ray, world, call_depth + 1);
+            return scatter_color.value(0.0, 0.0, &hit_rec.point) * ray_color_world(&scatter_ray, world, call_depth + 1);
         }
     }
     let unit_direction: Vec3 = ray.direction.unit_vector();
@@ -82,90 +84,13 @@ fn ray_color_bvh_node(ray: &Ray, root: &BvhNode, call_depth: i32) -> Color {
         let (did_scatter, scatter_color, scatter_ray) = hit_rec.material_ptr.scatter(ray, &hit_rec);
         if did_scatter {
             // if we do scatter,
-            return scatter_color * ray_color_bvh_node(&scatter_ray, root, call_depth + 1);
+            return scatter_color.value(0.0, 0.0, &hit_rec.point) * ray_color_bvh_node(&scatter_ray, root, call_depth + 1);
         }
     }
     let unit_direction: Vec3 = ray.direction.unit_vector();
     let t: f32 = 0.5 * (unit_direction.y() + 1.0);
     let skybox = (Color::new(1.0, 1.0, 1.0) * (1.0 - t)) + (Color::new(0.5, 0.7, 1.0) * t);
     skybox
-}
-
-fn create_test(destination_file_name: &str) {
-    const ASPECT_RATIO: f32 = 3.0 / 2.0;
-    const IMAGE_WIDTH: i32 = 300;
-    const IMAGE_HEIGHT: i32 = ((IMAGE_WIDTH as f32) / ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 20;
-    // WORLD
-
-    let world = random_scene();
-
-    let look_from = Point::new(13.0, 2.0, 3.0);
-    let look_at = Point::new(0.0, 0.0, 0.0);
-    let vup = Vec3::new(0.0, 1.0, 0.0);
-    let vfov = 20.0;
-    let focus_length = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
-
-    let aperature = 0.1;
-
-    let cam = Camera::new(
-        look_from,
-        look_at,
-        vup,
-        vfov,
-        ASPECT_RATIO,
-        aperature,
-        focus_length,
-    );
-
-    let scene_metadata = SceneMetaData {
-        file_name: String::from(format!("./scenes/{}", destination_file_name)),
-        aspect_ratio: ASPECT_RATIO,
-        image_width: IMAGE_WIDTH,
-        image_height: IMAGE_HEIGHT,
-        samples_per_pixel: SAMPLES_PER_PIXEL,
-    };
-
-    save_scene(scene_metadata, cam, world);
-}
-
-// TODO: add support for BVH
-fn create(destination_file_name: &str) {
-    const ASPECT_RATIO: f32 = 3.0 / 2.0;
-    const IMAGE_WIDTH: i32 = 300;
-    const IMAGE_HEIGHT: i32 = ((IMAGE_WIDTH as f32) / ASPECT_RATIO) as i32;
-    const SAMPLES_PER_PIXEL: i32 = 20;
-    // WORLD
-
-    let world = random_scene();
-
-    let look_from = Point::new(13.0, 2.0, 3.0);
-    let look_at = Point::new(0.0, 0.0, 0.0);
-    let vup = Vec3::new(0.0, 1.0, 0.0);
-    let vfov = 20.0;
-    let focus_length = 10.0; // (look_from - look_at).len() for focusing at the point we're aiming for
-
-    let aperature = 0.1;
-
-    let cam = Camera::new(
-        look_from,
-        look_at,
-        vup,
-        vfov,
-        ASPECT_RATIO,
-        aperature,
-        focus_length,
-    );
-
-    let scene_metadata = SceneMetaData {
-        file_name: String::from(format!("./scenes/{}", destination_file_name)),
-        aspect_ratio: ASPECT_RATIO,
-        image_width: IMAGE_WIDTH,
-        image_height: IMAGE_HEIGHT,
-        samples_per_pixel: SAMPLES_PER_PIXEL,
-    };
-
-    save_scene(scene_metadata, cam, world);
 }
 
 fn render(scene_path: &str) {
@@ -446,10 +371,12 @@ fn render_multi_threaded_bvh(scene_path: &str, mut num_threads: i32) {
 }
 
 fn main() {
-    // env::set_var("RUST_BACKTRACE", "1");
-    create("test-texture.json");
+    env::set_var("RUST_BACKTRACE", "1");
+    // create_test("./test-texture.json");
+    // create("test-texture.json");
+    create_checker_test("test-checker-texture.json");
     let start = Instant::now();
-    render_multi_threaded("scenes/debug.json", 5);
+    render_multi_threaded("scenes/test-checker-texture.json", 10);
     // render("scenes/test.json");
     let elapsed = start.elapsed().as_secs_f32();
     eprintln_f!("scene rendered in {elapsed}");

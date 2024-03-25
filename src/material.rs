@@ -2,10 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::ray::Ray;
 use crate::renderable::HitRecord;
-use crate::util::{random_between_0_1, Color, Point, Vec3};
+use crate::texture::{RenderableTexture, SolidColor};
+use crate::util::{random_between_0_1, Point, Vec3};
 use std::fmt;
 pub trait Material {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray);
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray);
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -17,7 +18,7 @@ pub enum RenderableMaterial {
 }
 
 impl Material for RenderableMaterial {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
         match self {
             RenderableMaterial::Lambertian(lm) => lm.scatter(r_in, hit_record),
             RenderableMaterial::Metal(m) => m.scatter(r_in, hit_record),
@@ -28,18 +29,18 @@ impl Material for RenderableMaterial {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LambertianMaterial {
-    albedo: Color,
+    albedo: RenderableTexture,
 }
 
 // default material
 impl LambertianMaterial {
-    pub fn new(albedo: Color) -> Self {
+    pub fn new(albedo: RenderableTexture) -> Self {
         Self { albedo }
     }
 }
 
 impl Material for LambertianMaterial {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
         let mut scatter_direction = hit_record.normal + Vec3::random_unit_vector();
         if scatter_direction.near_zero() {
             scatter_direction = hit_record.normal;
@@ -67,22 +68,22 @@ impl fmt::Display for LambertianMaterial {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Metal {
-    albedo: Color,
+    albedo: RenderableTexture,
     fuzziness: f32,
 }
 
 impl Metal {
-    pub fn new(color: Color, fuzziness: Option<f32>) -> Self {
+    pub fn new(RenderableTexture: RenderableTexture, fuzziness: Option<f32>) -> Self {
         let f = fuzziness.unwrap_or(0.0);
         Self {
-            albedo: color,
+            albedo: RenderableTexture,
             fuzziness: if f < 1.0 { f } else { 0.0 },
         }
     }
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
         let reflected = Vec3::reflect(r_in.direction.unit_vector(), hit_record.normal);
         /*
          * if there is any fuzziness ( > 0.0) then it will add some offset in a unit sphere
@@ -158,9 +159,9 @@ impl Material for Dielectric {
      * And we know that cos(theta) is equal to R * n, given R and n are both unit vectors
      * so our final solution for sin(theta) = sqrt(1 - |R * n|^2)
      */
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, Color, Ray) {
-        // doesn't dim the reflection at all, full brightness and full color
-        let attenuation = Color::new(1.0, 1.0, 1.0);
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> (bool, RenderableTexture, Ray) {
+        // doesn't dim the reflection at all, full brightness and full RenderableTexture
+        let attenuation = RenderableTexture::SolidColor(SolidColor::from_values(1.0, 1.0, 1.0));
         let refraction_ratio = if hit_record.front_face {
             1.0 / self.ir
         } else {

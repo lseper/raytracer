@@ -5,6 +5,7 @@ use crate::aabb::AABB;
 use crate::material::{LambertianMaterial, RenderableMaterial};
 use crate::ray::Ray;
 use crate::sphere::Sphere;
+use crate::texture::SolidColor;
 use crate::util::{Color, Point, Vec3, Interval};
 
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,8 @@ pub struct HitRecord {
     pub point: Point,
     pub normal: Vec3,
     pub t: f32,
+    pub u: f32,
+    pub v: f32,
     pub material_ptr: RenderableMaterial,
 
     pub front_face: bool,
@@ -21,14 +24,15 @@ pub struct HitRecord {
 
 impl HitRecord {
     pub fn nothing() -> Self {
+        let default_material_ptr = RenderableMaterial::Lambertian(LambertianMaterial::new(crate::texture::RenderableTexture::SolidColor(SolidColor::from_values(1.0, 1.0, 1.0))));
         Self {
             point: Point::zero(),
             normal: Vec3::zero(),
             t: 0.0,
+            u: 0.0,
+            v: 0.0,
             front_face: true,
-            material_ptr: RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(
-                1.0, 1.0, 1.0,
-            ))),
+            material_ptr: default_material_ptr
         }
     }
 
@@ -36,6 +40,8 @@ impl HitRecord {
         point: Point,
         normal: Vec3,
         t: f32,
+        u: f32,
+        v: f32,
         front_face: bool,
         material_ptr: RenderableMaterial,
     ) -> Self {
@@ -43,6 +49,8 @@ impl HitRecord {
             point,
             normal,
             t,
+            u, 
+            v,
             front_face,
             material_ptr,
         }
@@ -81,7 +89,7 @@ impl Copy for HitRecord {}
 
 impl Clone for HitRecord {
     fn clone(&self) -> Self {
-        HitRecord { point: self.point, normal: self.normal, t: self.t, material_ptr: self.material_ptr, front_face: self.front_face }
+        HitRecord { point: self.point, normal: self.normal, t: self.t, u: self.u, v: self.v, material_ptr: self.material_ptr, front_face: self.front_face }
     }
 }
 

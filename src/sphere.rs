@@ -7,6 +7,7 @@ use crate::material::RenderableMaterial;
 use crate::ray::Ray;
 use crate::renderable::{HitRecord, Renderable};
 use crate::util::{Point, Vec3, Interval};
+use crate::texture::{RenderableTexture, SolidColor};
 // use std::fmt;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -121,14 +122,15 @@ impl Renderable for Sphere {
             }
             let hr_point = ray.at(root);
             let normal = (hr_point - center) / self.r;
-            let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
+            // TODO: actually set correct u, v values
+            let mut hit_record = HitRecord::new(hr_point, normal, root, 0.0, 0.0, false, self.material);
             hit_record.set_face_normal(ray, &normal);
             return (true, hit_record);
         }
 
         let hr_point = ray.at(root);
         let normal = (hr_point - center) / self.r;
-        let mut hit_record = HitRecord::new(hr_point, normal, root, false, self.material);
+        let mut hit_record = HitRecord::new(hr_point, normal, root, 0.0, 0.0, false, self.material);
         hit_record.set_face_normal(ray, &normal);
         return (true, hit_record);
     }
@@ -152,7 +154,7 @@ mod tests {
 
     #[test]
     fn sphere_is_hit_when_ray_cast_hitting_directly() {
-        let material: RenderableMaterial = RenderableMaterial::Lambertian(LambertianMaterial::new(Color::new(0.0, 0.0, 0.0)));
+        let material: RenderableMaterial = RenderableMaterial::Lambertian(LambertianMaterial::new(RenderableTexture::SolidColor(SolidColor::from_values(0.0, 0.0, 0.0))));
         let sphere_a = Sphere::new(Point::new(-5.0, -5.0, 0.0), 2.0, material);
         let r = Ray::new(Point::new(-5.0, -5.0, -5.0), Point::new(-5.0, -5.0, 0.0));
         let (did_hit, _actual_hit_record) = sphere_a.hit(&r, Interval{min: 0.0, max:10.0});
